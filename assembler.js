@@ -20,6 +20,7 @@ var regSP = 0x100;
 var memory = new Array(0x600);
 var runForever = false;
 var labels = new Labels();
+var codeLen;
 var codeRunning = false;
 var xmlhttp;
 var myInterval;
@@ -2211,33 +2212,39 @@ function message(text) {
 
 function Labels() {
   var labelIndex = [];
-  var labelPtr = 0;
 
-  function index(input) {
+  function indexLines(lines) {
+    for (var i = 0; i < lines.length; i++) {
+      if (! indexLine(lines[i])) {
+        message("<b>Label already defined at line "+(i + 1)+":</b> "+lines[i]);
+        return false;
+      }
+    }
+    return true;
+  }
 
+  /*
+  * indexLine(line) - extract label if line contains one and calculate position in memory.
+  * Return false if label alread exists.
+  */
+
+
+  function indexLine(input) {
     // remove comments
-
     input = input.replace(/^(.*?);.*/, "$1");
 
     // trim line
-
     input = input.replace(/^\s+/, "");
     input = input.replace(/\s+$/, "");
 
-    // Figure out how many bytes this instuction takes
-
-    thisPC = defaultCodePC;
-
-    codeLen = 0;
-    //  defaultCodePC = 0x600;
+    // Figure out how many bytes this instruction takes
+    var currentPC = defaultCodePC;
     compileLine(input);
-    regPC += codeLen;
 
     // Find command or label
-
     if (input.match(/^\w+:/)) {
       label = input.replace(/(^\w+):.*$/, "$1");
-      return push(label + "|" + thisPC);
+      return push(label + "|" + currentPC);
     }
     return true;
   }
@@ -2250,7 +2257,7 @@ function Labels() {
     if (find(name)) {
       return false;
     }
-    labelIndex[labelPtr++] = name + "|";
+    labelIndex.push(name + "|");
     return true;
   }
 
@@ -2307,10 +2314,9 @@ function Labels() {
 
   function reset() {
     labelIndex = [];
-    labelPtr = 0;
   }
 
-  this.index = index;
+  this.indexLines = indexLines;
   this.find = find;
   this.getPC = getPC;
   this.displayMessage = displayMessage;
@@ -2320,7 +2326,7 @@ function Labels() {
 /*
 *  compileCode()
 *
-*  "Compiles" the code into a string (global var compiledCode)
+*  "Compiles" the code into memory
 *
 */
 
@@ -2335,22 +2341,20 @@ function compileCode() {
 
   message("Indexing labels..");
 
-  defaultCodePC = regPC = 0x600;
+  defaultCodePC = 0x600;
 
-  for (xc=0; xc<lines.length; xc++) {
-    if (! labels.index(lines[xc])) {
-      message("<b>Label already defined at line "+(xc+1)+":</b> "+lines[xc]);
-      return false;
-    }
+  if (!labels.indexLines(lines)) {
+    return false;
   }
 
   labels.displayMessage();
 
-  defaultCodePC = regPC = 0x600;
+  defaultCodePC = 0x600;
   message("Compiling code..");
 
-  for (x=0; x<lines.length; x++) {
-    if (! compileLine(lines[x], x)) {
+  codeLen = 0;
+  for (var i = 0; i < lines.length; i++) {
+    if (! compileLine(lines[i], i)) {
       codeCompiledOK = false;
       break;
     }
@@ -2366,7 +2370,7 @@ function compileCode() {
     $('#hexdumpButton').attr('disabled', false);
     $('#compileButton').attr('disabled', true);
     $('#fileSelect').attr('disabled', false);
-    memory[defaultCodePC] = 0x00;
+    memory[defaultCodePC] = 0x00; //set a null byte at the end of the code
   } else {
     str = lines[x].replace("<", "&lt;").replace(">", "&gt;");
     message("<b>Syntax error line " + (x+1) + ": " + str + "</b>");
@@ -2806,7 +2810,7 @@ function stackPop() {
 }
 
 /*
-* pushByte() - Push byte to compiledCode variable
+* pushByte() - Push byte to memory
 *
 */
 
