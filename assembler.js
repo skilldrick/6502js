@@ -2019,15 +2019,13 @@ var Opcodes = [
 
 // Initialize everything.
 
-document.getElementById("compileButton").disabled = false;
-document.getElementById("runButton").disabled = true;
-document.getElementById("hexdumpButton").disabled = true;
-document.getElementById("fileSelect").disabled = false;
-//document.getElementById("watch").disabled = true;
-document.getElementById("watch").checked = false;
-document.getElementById("stepButton").disabled = true;
-document.getElementById("gotoButton").disabled = true;
-document.addEventListener("keypress", keyPress, true);
+$('#compileButton').attr('disabled', false);
+$('#runButton').attr('disabled', true);
+$('#hexdumpButton').attr('disabled', true);
+$('#fileSelect').attr('disabled', false);
+$('#watch').attr('checked', false);
+$('#stepButton').attr('disabled', true);
+$('#gotoButton').attr('disabled', true);
 
 // Paint the "display"
 
@@ -2040,7 +2038,7 @@ for (y=0; y<32; y++) {
   html += "</tr>";
 }
 html += "</table>";
-document.getElementById("screen").innerHTML = html;
+$('#screen').html(html);
 
 // Reset everything
 
@@ -2076,7 +2074,7 @@ function updateDebugInfo() {
   var html = "<br />";
   html += "A=$" + num2hex(regA)+" X=$" + num2hex(regX)+" Y=$" + num2hex(regY)+"<br />";
   html += "P=$" + num2hex(regP)+" SP=$"+addr2hex(regSP)+" PC=$" + addr2hex(regPC);
-  document.getElementById("md").innerHTML = html;
+  $('#md').html(html);
 }
 
 /*
@@ -2115,8 +2113,8 @@ function gotoAddr() {
 function stopDebugger() {
   debug = false;
   if (codeRunning) {
-    document.getElementById("stepButton").disabled = true;
-    document.getElementById("gotoButton").disabled = true;
+    $('#stepButton').attr('disabled', true);
+    $('#gotoButton').attr('disabled', true);
   }
 }
 
@@ -2124,8 +2122,8 @@ function enableDebugger() {
   debug = true;
   if (codeRunning) {
     updateDebugInfo();
-    document.getElementById("stepButton").disabled = false;
-    document.getElementById("gotoButton").disabled = false;
+    $('#stepButton').attr('disabled', false);
+    $('#gotoButton').attr('disabled', false);
   }
 }
 /*
@@ -2151,16 +2149,17 @@ function toggleDebug() {
 */
 
 function disableButtons() {
-  document.getElementById("runButton").disabled = true;
-  document.getElementById("hexdumpButton").disabled = true;
-  document.getElementById("fileSelect").disabled = false;
-  document.getElementById("compileButton").disabled = false;
-  document.getElementById("runButton").value = "Run";
+  $('#compileButton').attr('disabled', false);
+  $('#runButton').attr('disabled', true);
+  $('#hexdumpButton').attr('disabled', true);
+  $('#fileSelect').attr('disabled', false);
+  $('#runButton').val('Run');
+
   codeCompiledOK = false;
   codeRunning = false;
-  document.getElementById("code").focus();
-  document.getElementById("stepButton").disabled = true;
-  document.getElementById("gotoButton").disabled = true;
+  $('#code').focus();
+  $('#stepButton').attr('disabled', true);
+  $('#gotoButton').attr('disabled', true);
   clearInterval(myInterval);
 }
 
@@ -2172,8 +2171,8 @@ function disableButtons() {
 function Load(file) {
   reset();
   disableButtons();
-  document.getElementById("code").value = "Loading, please wait..";
-  document.getElementById("compileButton").disabled = true;
+  $('#code').val("Loading, please wait..");
+  $('#compileButton').attr('disabled', true);
   xmlhttp = new XMLHttpRequest();
   xmlhttp.onreadystatechange = FileLoaded;
   xmlhttp.open("GET", "/examples/" + file);
@@ -2184,8 +2183,8 @@ function Load(file) {
 function FileLoaded() {
   if (xmlhttp.readyState == 4) {
     if (xmlhttp.status == 200) {
-      document.getElementById("code").value = xmlhttp.responseText;
-      document.getElementById("compileButton").disabled = false;
+      $('#code').val(xmlhttp.responseText);
+      $('#compileButton').attr('disabled', false);
     }
   }
 }
@@ -2198,7 +2197,7 @@ function FileLoaded() {
 function reset() {
   for (y=0; y<32; y++) {
     for (x=0; x<32; x++) {
-      display[y*32+x] = document.getElementById("x"+x+"y"+y).style;
+      display[y*32+x] = $('#x'+x+'y'+y)[0].style;
       display[y*32+x].background = "#000000";
     }
   }
@@ -2219,9 +2218,7 @@ function reset() {
 */
 
 function message(text) {
-  obj = document.getElementById("messages");
-  obj.innerHTML += text + "<br />";
-  obj.scrollTop = obj.scrollHeight;
+  $('#messages').append(text + '<br>').scrollTop(10000);
 }
 
 /*
@@ -2233,9 +2230,9 @@ function message(text) {
 
 function compileCode() {
   reset();
-  document.getElementById("messages").innerHTML = "";
+  $('#messages').empty();
 
-  var code = document.getElementById("code").value;
+  var code = $('#code').val();
   code += "\n\n";
   lines = code.split("\n");
   codeCompiledOK = true;
@@ -2275,17 +2272,17 @@ function compileCode() {
   }
 
   if (codeCompiledOK) {
-    document.getElementById("runButton").disabled = false;
-    document.getElementById("hexdumpButton").disabled = false;
-    document.getElementById("compileButton").disabled = true;
-    document.getElementById("fileSelect").disabled = false;
+    $('#runButton').attr('disabled', false);
+    $('#hexdumpButton').attr('disabled', false);
+    $('#compileButton').attr('disabled', true);
+    $('#fileSelect').attr('disabled', false);
     memory[defaultCodePC] = 0x00;
   } else {
     str = lines[x].replace("<", "&lt;").replace(">", "&gt;");
     message("<b>Syntax error line " + (x+1) + ": " + str + "</b>");
-    document.getElementById("runButton").disabled = true;
-    document.getElementById("compileButton").disabled = false;
-    document.getElementById("fileSelect").disabled = false;
+    $('#runButton').attr('disabled', true);
+    $('#compileButton').attr('disabled', false);
+    $('#fileSelect').attr('disabled', false);
     return;
   }
 
@@ -2936,21 +2933,20 @@ function runBinary() {
   if (codeRunning) {
     /* Switch OFF everything */
     codeRunning = false;
-    document.getElementById("runButton").value = "Run";
-    document.getElementById("hexdumpButton").disabled = false;
-    document.getElementById("fileSelect").disabled = false;
-    //    document.getElementById("watch").disabled = true;
+    $('#runButton').val('Run');
+    $('#hexdumpButton').attr('disabled', false);
+    $('#fileSelect').attr('disabled', false);
     toggleDebug();
     stopDebugger();
     clearInterval(myInterval);
   } else {
-    document.getElementById("runButton").value = "Stop";
-    document.getElementById("fileSelect").disabled = true;
-    document.getElementById("hexdumpButton").disabled = true;
+    $('#runButton').val('Stop');
+    $('#fileSelect').attr('disabled', true);
+    $('#hexdumpButton').attr('disabled', true);
     codeRunning = true;
     myInterval = setInterval("multiexecute()", 1);
-    document.getElementById("stepButton").disabled = !debug;
-    document.getElementById("gotoButton").disabled = !debug;
+    $('#stepButton').attr('disabled', !debug);
+    $('#gotoButton').attr('disabled', !debug);
   }
 }
 
@@ -3105,11 +3101,11 @@ function execute() {
     clearInterval(myInterval);
     message("Program end at PC=$" + addr2hex(regPC-1));
     codeRunning = false;
-    document.getElementById("stepButton").disabled = true;
-    document.getElementById("gotoButton").disabled = true;
-    document.getElementById("runButton").value = "Run";
-    document.getElementById("fileSelect").disabled = false;
-    document.getElementById("hexdumpButton").disabled = false;
+    $('#stepButton').attr('disabled', true);
+    $('#gotoButton').attr('disabled', true);
+    $('#runButton').val('Run');
+    $('#fileSelect').attr('disabled', false);
+    $('#hexdumpButton').attr('disabled', false);
   }
 }
 
@@ -3151,4 +3147,5 @@ $(document).ready(function () {
   $('#stepButton').click(debugExec);
   $('#gotoButton').click(gotoAddr);
   $('#code').keypress(disableButtons);
+  $(document).keypress(keyPress);
 });
