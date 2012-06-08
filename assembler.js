@@ -2018,7 +2018,6 @@ document.getElementById("compileButton").disabled = false;
 document.getElementById("runButton").disabled = true;
 document.getElementById("hexdumpButton").disabled = true;
 document.getElementById("fileSelect").disabled = false;
-document.getElementById("submitCode").disabled = true;
 //document.getElementById("watch").disabled = true;
 document.getElementById("watch").checked = false;
 document.getElementById("stepButton").disabled = true;
@@ -2152,7 +2151,6 @@ function disableButtons() {
   document.getElementById("fileSelect").disabled = false;
   document.getElementById("compileButton").disabled = false;
   document.getElementById("runButton").value = "Run";
-  document.getElementById("submitCode").disabled = true;
   codeCompiledOK = false;
   codeRunning = false;
   document.getElementById("code").focus();
@@ -2276,7 +2274,6 @@ function compileCode() {
     document.getElementById("hexdumpButton").disabled = false;
     document.getElementById("compileButton").disabled = true;
     document.getElementById("fileSelect").disabled = false;
-    document.getElementById("submitCode").disabled = false;
     memory[defaultCodePC] = 0x00;
   } else {
     str = lines[x].replace("<", "&lt;").replace(">", "&gt;");
@@ -2886,42 +2883,6 @@ function memStoreByte(addr, value) {
 }
 
 /*
-*  submitCode() - Submits code (using XMLHttpRequest) to be published (moderated)
-*
-*/
-
-function submitCode() {
-  var confirmMessage = "Warning: This will submit your code to 6502asm.com for moderation.\n";
-  confirmMessage += "Approved code will be published on the website.";
-  if (!confirm(confirmMessage)) {
-    return;
-  }
-
-  // Let's submit it
-  xmlhttp = new XMLHttpRequest();
-
-  xmlhttp.onreadystatechange = function() {
-    if (xmlhttp.readyState==4 && xmlhttp.status==200) {
-      message("-- Thank you for sharing your code with other 6502asm.com users.");
-      message("-- Your code has been submitted for moderation.");
-      message("-- Once approved, it will be published on the website.");
-      if (xmlhttp.responseText != "") {
-        alert("An error occoured while submitting your code.  The error message was:\n" +
-          xmlhttp.responseText + "\n" +
-        "Please try again later.");
-      }
-    }
-  }
-  var code = document.getElementById("code").value;
-  var params = "code=" + code;
-  xmlhttp.open("POST", "submit.php", true);
-  xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-  xmlhttp.setRequestHeader("Content-length", params.length);
-  xmlhttp.setRequestHeader("Connection", "close");
-  xmlhttp.send(params);
-}
-
-/*
 *  hexDump() - Dump binary as hex to new window
 *
 */
@@ -2973,7 +2934,6 @@ function runBinary() {
     document.getElementById("runButton").value = "Run";
     document.getElementById("hexdumpButton").disabled = false;
     document.getElementById("fileSelect").disabled = false;
-    document.getElementById("submitCode").disabled = false;
     //    document.getElementById("watch").disabled = true;
     toggleDebug();
     stopDebugger();
@@ -2982,7 +2942,6 @@ function runBinary() {
     document.getElementById("runButton").value = "Stop";
     document.getElementById("fileSelect").disabled = true;
     document.getElementById("hexdumpButton").disabled = true;
-    document.getElementById("submitCode").disabled = true;
     codeRunning = true;
     myInterval = setInterval("multiexecute()", 1);
     document.getElementById("stepButton").disabled = !debug;
@@ -3146,7 +3105,6 @@ function execute() {
     document.getElementById("runButton").value = "Run";
     document.getElementById("fileSelect").disabled = false;
     document.getElementById("hexdumpButton").disabled = false;
-    document.getElementById("submitCode").disabled = false;
   }
 }
 
@@ -3175,3 +3133,13 @@ function updateDisplayFull() {
   }
 }
 
+$(document).ready(function () {
+  $('#compileButton').click(compileCode);
+  $('#runButton').click(runBinary);
+  $('#resetButton').click(reset);
+  $('#hexdumpButton').click(hexdump);
+  $('#watch').click(toggleDebug);
+  $('#stepButton').click(debugExec);
+  $('#gotoButton').click(gotoAddr);
+  $('#code').keypress(disableButtons);
+});

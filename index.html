@@ -14,15 +14,10 @@
 
 <table><tr>
 <td width="50px" valign="top">
-<input type="button" value="Compile" id="compileButton" onClick="compileCode();" />
-<input type="button" value="Run" id="runButton" onClick="runBinary();" />
-<input type="button" value="Reset" id="resetButton" onClick="reset();" />
-<input type="button" value="Hexdump" id="hexdumpButton" onClick="hexdump();" />
-<input type="button" value="Submit" id="submitCode" onClick="submitCode();" />
-<!--
-Forum disabled due to extreme amounts of spam
-<input type="button" value="Forum" id="forumButton" onClick="window.open('/chat/', 'forum', '' );" />
--->
+<input type="button" value="Compile" id="compileButton" />
+<input type="button" value="Run" id="runButton" />
+<input type="button" value="Reset" id="resetButton" />
+<input type="button" value="Hexdump" id="hexdumpButton" />
 <input type="button" value="Help" id="helpButton" onClick="window.open('help.html', 'helpwin', 'width=512,height=320,resizable=yes,scrollbars=yes,toolbar=no,location=no,menubar=no,status=no' );" />
 <select id="fileSelect" onChange="Load(this.options[this.selectedIndex].value)">
   <option>Examples</option>
@@ -42,19 +37,19 @@ Forum disabled due to extreme amounts of spam
 <table align="center">
 <tr>
   <td valign="top">
-    <textarea class="code" id="code" onKeyPress="disableButtons();"></textarea>
+    <textarea class="code" id="code"></textarea>
   </td>
   <td valign="top">
     <div class="screen" id="screen"></div>
    <div class="dbugWin">
-    <input type="checkbox" id="watch" onClick="toggleDebug();" /><font class="version">Real-time debug</font><br />
+    <input type="checkbox" id="watch" /><font class="version">Real-time debug</font><br />
     <div class="minidebugger" id="md">
       <br />
       A=$00 X=$00 Y=$00<br />
       P=$00 SP=$0000 PC=$0000<br />
     </div>
-    <input type="button" value="Step" id="stepButton" onClick="debugExec();"/>
-    <input type="button" value="Jump to.." id="gotoButton" onClick="gotoAddr();"/>
+    <input type="button" value="Step" id="stepButton" />
+    <input type="button" value="Jump to.." id="gotoButton" />
    </div>
   </td>
 </tr>
@@ -62,7 +57,8 @@ Forum disabled due to extreme amounts of spam
 </td>
 </tr></table>
 <div class="messages" id="messages"></div>
-<script type="text/javascript" src="assembler.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+<script src="assembler.js"></script>
 
 </body>
 </html>
