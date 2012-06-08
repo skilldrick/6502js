@@ -2942,7 +2942,7 @@ function runBinary() {
     $('#fileSelect').attr('disabled', true);
     $('#hexdumpButton').attr('disabled', true);
     codeRunning = true;
-    myInterval = setInterval("multiexecute()", 1);
+    myInterval = setInterval(multiexecute, 30);
     $('#stepButton').attr('disabled', !debug);
     $('#gotoButton').attr('disabled', !debug);
   }
@@ -3076,8 +3076,7 @@ function testADC(value) {
 
 function multiexecute() {
   if (! debug) {
-    for (var w=0; w<64; w++) {
-      execute();
+    for (var w=0; w<200; w++) {
       execute();
     }
   }
