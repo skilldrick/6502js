@@ -32,323 +32,1984 @@ var palette = [
   "#777777", "#aaff66", "#0088ff", "#bbbbbb"
 ];
 
+
+var instructions = {
+
+  i00: function () {
+    codeRunning = false;
+  },
+
+  i01: function () {
+    addr = popByte() + regX;
+    value = memory[addr] + (memory[addr+1] << 8);
+    regA |= value;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i05: function () {
+    zp = popByte();
+    regA |= memory[zp];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i06: function () {
+    zp = popByte();
+    value = memory[zp];
+    regP = (regP & 0xfe) | ((value>>7)&1);
+    value = value << 1;
+    memStoreByte(zp, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i08: function () {
+    stackPush(regP);
+  },
+
+  i09: function () {
+    regA |= popByte();
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i0a: function () {
+    regP = (regP & 0xfe) | ((regA>>7)&1);
+    regA = regA<<1;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i0d: function () {
+    regA |= memory[popWord()];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i0e: function () {
+    addr = popWord();
+    value = memory[addr];
+    regP = (regP & 0xfe) | ((value>>7)&1);
+    value = value << 1;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 2;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i10: function () {
+    offset = popByte();
+    if ((regP & 0x80) == 0) { jumpBranch(offset); }
+  },
+
+  i11: function () {
+    zp = popByte();
+    value = memory[zp] + (memory[zp+1]<<8) + regY;
+    regA |= memory[value];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i15: function () {
+    addr = (popByte() + regX) & 0xff;
+    regA |= memory[addr];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i16: function () {
+    addr = (popByte() + regX) & 0xff;
+    value = memory[addr];
+    regP = (regP & 0xfe) | ((value>>7)&1);
+    value = value << 1;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i18: function () {
+    regP &= 0xfe;
+  },
+
+  i19: function () {
+    addr = popWord() + regY;
+    regA |= memory[addr];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i1d: function () {
+    addr = popWord() + regX;
+    regA |= memory[addr];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i1e: function () {
+    addr = popWord() + regX;
+    value = memory[addr];
+    regP = (regP & 0xfe) | ((value>>7)&1);
+    value = value << 1;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i20: function () {
+    addr = popWord();
+    currAddr = regPC-1;
+    stackPush(((currAddr >> 8) & 0xff));
+    stackPush((currAddr & 0xff));
+    regPC = addr;
+  },
+
+  i21: function () {
+    addr = (popByte() + regX)&0xff;
+    value = memory[addr]+(memory[addr+1] << 8);
+    regA &= value;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i24: function () {
+    zp = popByte();
+    value = memory[zp];
+    if (value & regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    regP = (regP & 0x3f) | (value & 0xc0);
+  },
+
+  i25: function () {
+    zp = popByte();
+    regA &= memory[zp];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 2;
+    }
+    if (regA & 0x80) {
+      regP &= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i26: function () {
+    sf = (regP & 1);
+    addr = popByte();
+    value = memory[addr]; //  & regA;  -- Thanks DMSC ;)
+    regP = (regP & 0xfe) | ((value>>7)&1);
+  value = value << 1;
+  value |= sf;
+  memStoreByte(addr, value);
+  if (value) {
+    regP &= 0xfd;
+  } else {
+    regP |= 0x02;
+  }
+  if (value & 0x80) {
+    regP |= 0x80;
+  } else {
+    regP &= 0x7f;
+  }
+  },
+
+  i28: function () {
+    regP = stackPop() | 0x20;
+  },
+
+  i29: function () {
+    regA &= popByte();
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i2a: function () {
+    sf = (regP&1);
+    regP = (regP&0xfe) | ((regA>>7)&1);
+    regA = regA << 1;
+    regA |= sf;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i2c: function () {
+    value = memory[popWord()];
+    if (value & regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    regP = (regP & 0x3f) | (value & 0xc0);
+  },
+
+  i2d: function () {
+    value = memory[popWord()];
+    regA &= value;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i2e: function () {
+    sf = regP & 1;
+    addr = popWord();
+    value = memory[addr];
+    regP = (regP & 0xfe) | ((value>>7)&1);
+    value = value << 1;
+    value |= sf;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i30: function () {
+    offset = popByte();
+    if (regP & 0x80) { jumpBranch(offset); }
+  },
+
+  i31: function () {
+    zp = popByte();
+    value = memory[zp]+(memory[zp+1]<<8) + regY;
+    regA &= memory[value];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i35: function () {
+    zp = popByte();
+    value = memory[zp]+(memory[zp+1]<<8) + regX;
+    regA &= memory[value];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i36: function () {
+    sf = regP & 1;
+    addr = (popByte() + regX) & 0xff;
+    value = memory[addr];
+    regP = (regP & 0xfe) | ((value>>7)&1);
+    value = value << 1;
+    value |= sf;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i38: function () {
+    regP |= 1;
+  },
+
+  i39: function () {
+    addr = popWord() + regY;
+    value = memory[addr];
+    regA &= value;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i3d: function () {
+    addr = popWord() + regX;
+    value = memory[addr];
+    regA &= value;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i3e: function () {
+    sf = regP&1;
+    addr = popWord() + regX;
+    value = memory[addr];
+    regP = (regP & 0xfe) | ((value>>7)&1);
+    value = value << 1;
+    value |= sf;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i40: function () {
+  },
+
+  i41: function () {
+    zp = (popByte() + regX)&0xff;
+    value = memory[zp]+ (memory[zp+1]<<8);
+    regA ^= memory[value];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i45: function () {
+    addr = (popByte() + regX) & 0xff;
+    value = memory[addr];
+    regA ^= value;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i46: function () {
+    addr = popByte() & 0xff;
+    value = memory[addr];
+    regP = (regP & 0xfe) | (value&1);
+    value = value >> 1;
+    memStoreByte(addr, value);
+    if (value != 0) {
+      regP &= 0xfd;
+    } else {
+      regP |= 2;
+    }
+    if ((value&0x80) == 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i48: function () {
+    stackPush(regA);
+  },
+
+  i49: function () {
+    regA ^= popByte();
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i4a: function () {
+    regP = (regP&0xfe) | (regA&1);
+    regA = regA >> 1;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i4c: function () {
+    regPC = popWord();
+  },
+
+  i4d: function () {
+    addr = popWord();
+    value = memory[addr];
+    regA ^= value;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i4e: function () {
+    addr = popWord();
+    value = memory[addr];
+    regP = (regP&0xfe)|(value&1);
+    value = value >> 1;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i50: function () {
+    offset = popByte();
+    if ((regP & 0x40) == 0) { jumpBranch(offset); }
+  },
+
+  i51: function () {
+    zp = popByte();
+    value = memory[zp] + (memory[zp+1]<<8) + regY;
+    regA ^= memory[value];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i55: function () {
+    addr = (popByte() + regX) & 0xff;
+    regA ^= memory[ addr ];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i56: function () {
+    addr = (popByte() + regX) & 0xff;
+    value = memory[ addr ];
+    regP = (regP&0xfe) | (value&1);
+    value = value >> 1;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i58: function () {
+  },
+
+  i59: function () {
+    addr = popWord() + regY;
+    value = memory[ addr ];
+    regA ^= value;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i5d: function () {
+    addr = popWord() + regX;
+    value = memory[ addr ];
+    regA ^= value;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i5e: function () {
+    addr = popWord() + regX;
+    value = memory[ addr ];
+    regP = (regP&0xfe) | (value&1);
+    value = value >> 1;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i60: function () {
+    regPC = (stackPop()+1) | (stackPop()<<8);
+  },
+
+  i61: function () {
+    zp = (popByte() + regX)&0xff;
+    addr = memory[zp] + (memory[zp+1]<<8);
+    value = memory[ addr ];
+    testADC(value);
+  },
+
+  i65: function () {
+    addr = popByte();
+    value = memory[ addr ];
+    testADC(value);
+  },
+
+  i66: function () {
+    sf = regP&1;
+    addr = popByte();
+    value = memory[ addr ];
+    regP = (regP&0xfe)|(value&1);
+    value = value >> 1;
+    if (sf) { value |= 0x80; }
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i68: function () {
+    regA = stackPop();
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i69: function () {
+    value = popByte();
+    testADC(value);
+  },
+
+  i6a: function () {
+    sf = regP&1;
+    regP = (regP&0xfe) | (regA&1);
+    regA = regA >> 1;
+    if (sf) { regA |= 0x80; }
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i6c: function () {
+  },
+
+  i6d: function () {
+    addr = popWord();
+    value = memory[ addr ];
+    testADC(value);
+  },
+
+  i6e: function () {
+    sf = regP&1;
+    addr = popWord();
+    value = memory[ addr ];
+    regP = (regP&0xfe)|(value&1);
+    value = value >> 1;
+    if (sf) { value |= 0x80; }
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i70: function () {
+    offset = popByte();
+    if (regP & 0x40) { jumpBranch(offset); }
+  },
+
+  i71: function () {
+    zp = popByte();
+    addr = memory[zp] + (memory[zp+1]<<8);
+    value = memory[ addr + regY ];
+    testADC(value);
+  },
+
+  i75: function () {
+    addr = (popByte() + regX) & 0xff;
+    value = memory[ addr ];
+    regP = (regP&0xfe) | (value&1);
+    testADC(value);
+  },
+
+  i76: function () {
+    sf = (regP&1);
+    addr = (popByte() + regX) & 0xff;
+    value = memory[ addr ];
+    regP = (regP&0xfe) | (value&1);
+    value = value >> 1;
+    if (sf) { value |= 0x80; }
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i78: function () {
+  },
+
+  i79: function () {
+    addr = popWord();
+    value = memory[ addr + regY ];
+    testADC(value);
+  },
+
+  i7d: function () {
+    addr = popWord();
+    value = memory[ addr + regX ];
+    testADC(value);
+  },
+
+  i7e: function () {
+    sf = regP&1;
+    addr = popWord() + regX;
+    value = memory[ addr ];
+    regP = (regP&0xfe) | (value&1);
+    value = value >> 1;
+    if (value) { value |= 0x80; }
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i81: function () {
+    zp = (popByte()+regX)&0xff;
+    addr = memory[zp] + (memory[zp+1]<<8);
+    memStoreByte(addr, regA);
+  },
+
+  i84: function () {
+    memStoreByte(popByte(), regY);
+  },
+
+  i85: function () {
+    memStoreByte(popByte(), regA);
+  },
+
+  i86: function () {
+    memStoreByte(popByte(), regX);
+  },
+
+  i88: function () {
+    regY = (regY-1) & 0xff;
+    if (regY) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regY & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i8a: function () {
+    regA = regX & 0xff;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i8c: function () {
+    memStoreByte(popWord(), regY);
+  },
+
+  i8d: function () {
+    memStoreByte(popWord(), regA);
+  },
+
+  i8e: function () {
+    memStoreByte(popWord(), regX);
+  },
+
+  i90: function () {
+    offset = popByte();
+    if ((regP & 1) == 0) { jumpBranch(offset); }
+  },
+
+  i91: function () {
+    zp = popByte();
+    addr = memory[zp] + (memory[zp+1]<<8) + regY;
+    memStoreByte(addr, regA);
+  },
+
+  i94: function () {
+    memStoreByte(popByte() + regX, regY);
+  },
+
+  i95: function () {
+    memStoreByte(popByte() + regX, regA);
+  },
+
+  i96: function () {
+    memStoreByte(popByte() + regY, regX);
+  },
+
+  i98: function () {
+    regA = regY & 0xff;
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  i99: function () {
+    memStoreByte(popWord() + regY, regA);
+  },
+
+  i9a: function () {
+    regSP = regX & 0xff;
+  },
+
+  i9d: function () {
+    addr = popWord();
+    memStoreByte(addr + regX, regA);
+  },
+
+  ia0: function () {
+    regY = popByte();
+    if (regY) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regY & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ia1: function () {
+    zp = (popByte()+regX)&0xff;
+    addr = memory[zp] + (memory[zp+1]<<8);
+    regA = memory[ addr ];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ia2: function () {
+    regX = popByte();
+    if (regX) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regX & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ia4: function () {
+    regY = memory[ popByte() ];
+    if (regY) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regY & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ia5: function () {
+    regA = memory[ popByte() ];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ia6: function () {
+    regX = memory[ popByte() ];
+    if (regX) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regX & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ia8: function () {
+    regY = regA & 0xff;
+    if (regY) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regY & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ia9: function () {
+    regA = popByte();
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  iaa: function () {
+    regX = regA & 0xff;
+    if (regX) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regX & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  iac: function () {
+    regY = memory[ popWord() ];
+    if (regY) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regY & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  iad: function () {
+    regA = memory[ popWord() ];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  iae: function () {
+    regX = memory[ popWord() ];
+    if (regX) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regX & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ib0: function () {
+    offset = popByte();
+    if (regP & 1) { jumpBranch(offset); }
+  },
+
+  ib1: function () {
+    zp = popByte();
+    addr = memory[zp] + (memory[zp+1]<<8) + regY;
+    regA = memory[ addr ];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ib4: function () {
+    regY = memory[ popByte() + regX ];
+    if (regY) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regY & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ib5: function () {
+    regA = memory[ (popByte() + regX) & 0xff ];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ib6: function () {
+    regX = memory[ popByte() + regY ];
+    if (regX) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regX & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ib8: function () {
+    regP &= 0xbf;
+  },
+
+  ib9: function () {
+    addr = popWord() + regY;
+    regA = memory[ addr ];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  iba: function () {
+    regX = regSP & 0xff;
+  },
+
+  ibc: function () {
+    addr = popWord() + regX;
+    regY = memory[ addr ];
+    if (regY) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regY & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ibd: function () {
+    addr = popWord() + regX;
+    regA = memory[ addr ];
+    if (regA) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regA & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ibe: function () {
+    addr = popWord() + regY;
+    regX = memory[ addr ];
+    if (regX) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regX & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ic0: function () {
+    value = popByte();
+    if ((regY+value) > 0xff) {
+      regP |= 1;
+    } else {
+      regP &= 0xfe;
+    }
+    ov = value;
+    value = (regY-value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ic1: function () {
+    zp = popByte();
+    addr = memory[zp] + (memory[zp+1]<<8) + regY;
+    value = memory[ addr ];
+    doCompare(regA, value);
+  },
+
+  ic4: function () {
+    value = memory[ popByte() ];
+    doCompare(regY, value);
+  },
+
+  ic5: function () {
+    value = memory[ popByte() ];
+    doCompare(regA, value);
+  },
+
+  ic6: function () {
+    zp = popByte();
+    value = memory[ zp ];
+    --value;
+    memStoreByte(zp, value&0xff);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ic8: function () {
+    regY = (regY + 1) & 0xff;
+    if (regY) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regY & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ic9: function () {
+    value = popByte();
+    doCompare(regA, value);
+  },
+
+  ica: function () {
+    regX = (regX-1) & 0xff;
+    if (regX) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regX & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  icc: function () {
+    value = memory[ popWord() ];
+    doCompare(regY, value);
+  },
+
+  icd: function () {
+    value = memory[ popWord() ];
+    doCompare(regA, value);
+  },
+
+  ice: function () {
+    addr = popWord();
+    value = memory[ addr ];
+    --value;
+    value = value&0xff;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  id0: function () {
+    offset = popByte();
+    if ((regP&2)==0) { jumpBranch(offset); }
+  },
+
+  id1: function () {
+    zp = popByte();
+    addr = memory[zp] + (memory[zp+1]<<8) + regY;
+    value = memory[ addr ];
+    doCompare(regA, value);
+  },
+
+  id5: function () {
+    value = memory[ popByte() + regX ];
+    doCompare(regA, value);
+  },
+
+  id6: function () {
+    addr = popByte() + regX;
+    value = memory[ addr ];
+    --value;
+    value = value&0xff;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  id8: function () {
+    regP &= 0xf7;
+  },
+
+  id9: function () {
+    addr = popWord() + regY;
+    value = memory[ addr ];
+    doCompare(regA, value);
+  },
+
+  idd: function () {
+    addr = popWord() + regX;
+    value = memory[ addr ];
+    doCompare(regA, value);
+  },
+
+  ide: function () {
+    addr = popWord() + regX;
+    value = memory[ addr ];
+    --value;
+    value = value&0xff;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ie0: function () {
+    value = popByte();
+    doCompare(regX, value);
+  },
+
+  ie1: function () {
+    zp = (popByte()+regX)&0xff;
+    addr = memory[zp] + (memory[zp+1]<<8);
+    value = memory[ addr ];
+    testSBC(value);
+  },
+
+  ie4: function () {
+    value = memory[ popByte() ];
+    doCompare(regX, value);
+  },
+
+  ie5: function () {
+    addr = popByte();
+    value = memory[ addr ];
+    testSBC(value);
+  },
+
+  ie6: function () {
+    zp = popByte();
+    value = memory[ zp ];
+    ++value;
+    value = (value)&0xff;
+    memStoreByte(zp, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ie8: function () {
+    regX = (regX + 1) & 0xff;
+    if (regX) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (regX & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ie9: function () {
+    value = popByte();
+    testSBC(value);
+  },
+
+  iea: function () {
+  },
+
+  iec: function () {
+    value = memory[ popWord() ];
+    doCompare(regX, value);
+  },
+
+  ied: function () {
+    addr = popWord();
+    value = memory[ addr ];
+    testSBC(value);
+  },
+
+  iee: function () {
+    addr = popWord();
+    value = memory[ addr ];
+    ++value;
+    value = (value)&0xff;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  if0: function () {
+    offset = popByte();
+    if (regP&2) { jumpBranch(offset); }
+  },
+
+  if1: function () {
+    zp = popByte();
+    addr = memory[zp] + (memory[zp+1]<<8);
+    value = memory[ addr + regY ];
+    testSBC(value);
+  },
+
+  if5: function () {
+    addr = (popByte() + regX)&0xff;
+    value = memory[ addr ];
+    regP = (regP&0xfe)|(value&1);
+    testSBC(value);
+  },
+
+  if6: function () {
+    addr = popByte() + regX;
+    value = memory[ addr ];
+    ++value;
+    value=value&0xff;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  if8: function () {
+    regP |= 8;
+  },
+
+  if9: function () {
+    addr = popWord();
+    value = memory[ addr + regY ];
+    testSBC(value);
+  },
+
+  ifd: function () {
+    addr = popWord();
+    value = memory[ addr + regX ];
+    testSBC(value);
+  },
+
+  ife: function () {
+    addr = popWord() + regX;
+    value = memory[ addr ];
+    ++value;
+    value=value&0xff;
+    memStoreByte(addr, value);
+    if (value) {
+      regP &= 0xfd;
+    } else {
+      regP |= 0x02;
+    }
+    if (value & 0x80) {
+      regP |= 0x80;
+    } else {
+      regP &= 0x7f;
+    }
+  },
+
+  ierr: function () {
+    message("Address $" + addr2hex(regPC) + " - unknown opcode " + opcode);
+    codeRunning = false;
+  }
+}
+
 var inst = [
-  i00,  //00
-  i01,  //01
-  ierr, //02
-  ierr, //03
-  ierr, //04
-  i05,  //05
-  i06,  //06
-  ierr, //07
-  i08,  //08
-  i09,  //09
-  i0a,  //0a
-  ierr, //0b
-  ierr, //0c
-  i0d,  //0d
-  i0e,  //0e
-  ierr, //0f
-  i10,  //10
-  i11,  //11
-  ierr, //12
-  ierr, //13
-  ierr, //14
-  i15,  //15
-  i16,  //16
-  ierr, //17
-  i18,  //18
-  i19,  //19
-  ierr, //1a
-  ierr, //1b
-  ierr, //1c
-  i1d,  //1d
-  i1e,  //1e
-  ierr, //1f
-  i20,  //20
-  i21,  //21
-  ierr, //22
-  ierr, //23
-  i24,  //24
-  i25,  //25
-  i26,  //26
-  ierr, //27
-  i28,  //28
-  i29,  //29
-  i2a,  //2a
-  ierr, //2b
-  i2c,  //2c
-  i2d,  //2d
-  i2e,  //2e
-  ierr, //2f
-  i30,  //30
-  i31,  //31
-  ierr, //32
-  ierr, //33
-  ierr, //34
-  i35,  //35
-  i36,  //36
-  ierr, //37
-  i38,  //38
-  i39,  //39
-  ierr, //3a
-  ierr, //3b
-  ierr, //3c
-  i3d,  //3d
-  i3e,  //3e
-  ierr, //3f
-  i40,  //40
-  i41,  //41
-  ierr, //42
-  ierr, //43
-  ierr, //44
-  i45,  //45
-  i46,  //46
-  ierr, //47
-  i48,  //48
-  i49,  //49
-  i4a,  //4a
-  ierr, //4b
-  i4c,  //4c
-  i4d,  //4d
-  i4e,  //4e
-  ierr, //4f
-  i50,  //50
-  i51,  //51
-  ierr, //52
-  ierr, //53
-  ierr, //54
-  i55,  //55
-  i56,  //56
-  ierr, //57
-  i58,  //58
-  i59,  //59
-  ierr, //5a
-  ierr, //5b
-  ierr, //5c
-  i5d,  //5d
-  i5e,  //5e
-  ierr, //5f
-  i60,  //60
-  i61,  //61
-  ierr, //62
-  ierr, //63
-  ierr, //64
-  i65,  //65
-  i66,  //66
-  ierr, //67
-  i68,  //68
-  i69,  //69
-  i6a,  //6a
-  ierr, //6b
-  i6c,  //6c
-  i6d,  //6d
-  i6e,  //6e
-  ierr, //6f
-  i70,  //70
-  i71,  //71
-  ierr, //72
-  ierr, //73
-  ierr, //74
-  i75,  //75
-  i76,  //76
-  ierr, //77
-  i78,  //78
-  i79,  //79
-  ierr, //7a
-  ierr, //7b
-  ierr, //7c
-  i7d,  //7d
-  i7e,  //7e
-  ierr, //7f
-  ierr, //80
-  i81,  //81
-  ierr, //82
-  ierr, //83
-  i84,  //84
-  i85,  //85
-  i86,  //86
-  ierr, //87
-  i88,  //88
-  ierr, //89
-  i8a,  //8a
-  ierr, //8b
-  i8c,  //8c
-  i8d,  //8d
-  i8e,  //8e
-  ierr, //8f
-  i90,  //90
-  i91,  //91
-  ierr, //92
-  ierr, //93
-  i94,  //94
-  i95,  //95
-  i96,  //96
-  ierr, //97
-  i98,  //98
-  i99,  //99
-  i9a,  //9a
-  ierr, //9b
-  ierr, //9c
-  i9d,  //9d
-  ierr, //9e
-  ierr, //9f
-  ia0,  //a0
-  ia1,  //a1
-  ia2,  //a2
-  ierr, //a3
-  ia4,  //a4
-  ia5,  //a5
-  ia6,  //a6
-  ierr, //a7
-  ia8,  //a8
-  ia9,  //a9
-  iaa,  //aa
-  ierr, //ab
-  iac,  //ac
-  iad,  //ad
-  iae,  //ae
-  ierr, //af
-  ib0,  //b0
-  ib1,  //b1
-  ierr, //b2
-  ierr, //b3
-  ib4,  //b4
-  ib5,  //b5
-  ib6,  //b6
-  ierr, //b7
-  ib8,  //b8
-  ib9,  //b9
-  iba,  //ba
-  ierr, //bb
-  ibc,  //bc
-  ibd,  //bd
-  ibe,  //be
-  ierr, //bf
-  ic0,  //c0
-  ic1,  //c1
-  ierr, //c2
-  ierr, //c3
-  ic4,  //c4
-  ic5,  //c5
-  ic6,  //c6
-  ierr, //c7
-  ic8,  //c8
-  ic9,  //c9
-  ica,  //ca
-  ierr, //cb
-  icc,  //cc
-  icd,  //cd
-  ierr, //ce
-  ierr, //cf
-  id0,  //d0
-  id1,  //d1
-  ierr, //d2
-  ierr, //d3
-  ierr, //d4
-  id5,  //d5
-  id6,  //d6
-  ierr, //d7
-  id8,  //d8
-  id9,  //d9
-  ierr, //da
-  ierr, //db
-  ierr, //dc
-  idd,  //dd
-  ide,  //de
-  ierr, //df
-  ie0,  //e0
-  ie1,  //e1
-  ierr, //e2
-  ierr, //e3
-  ie4,  //e4
-  ie5,  //e5
-  ie6,  //e6
-  ierr, //e7
-  ie8,  //e8
-  ie9,  //e9
-  iea,  //ea
-  ierr, //eb
-  iec,  //ec
-  ied,  //ed
-  iee,  //ee
-  ierr, //ef
-  if0,  //f0
-  if1,  //f1
-  ierr, //f2
-  ierr, //f3
-  ierr, //f4
-  if5,  //f5
-  if6,  //f6
-  ierr, //f7
-  if8,  //f8
-  if9,  //f9
-  ierr, //fa
-  ierr, //fb
-  ierr, //fc
-  ifd,  //fd
-  ife,  //fe
-  ierr  //ff
+  instructions.i00,  //00
+  instructions.i01,  //01
+  instructions.ierr, //02
+  instructions.ierr, //03
+  instructions.ierr, //04
+  instructions.i05,  //05
+  instructions.i06,  //06
+  instructions.ierr, //07
+  instructions.i08,  //08
+  instructions.i09,  //09
+  instructions.i0a,  //0a
+  instructions.ierr, //0b
+  instructions.ierr, //0c
+  instructions.i0d,  //0d
+  instructions.i0e,  //0e
+  instructions.ierr, //0f
+  instructions.i10,  //10
+  instructions.i11,  //11
+  instructions.ierr, //12
+  instructions.ierr, //13
+  instructions.ierr, //14
+  instructions.i15,  //15
+  instructions.i16,  //16
+  instructions.ierr, //17
+  instructions.i18,  //18
+  instructions.i19,  //19
+  instructions.ierr, //1a
+  instructions.ierr, //1b
+  instructions.ierr, //1c
+  instructions.i1d,  //1d
+  instructions.i1e,  //1e
+  instructions.ierr, //1f
+  instructions.i20,  //20
+  instructions.i21,  //21
+  instructions.ierr, //22
+  instructions.ierr, //23
+  instructions.i24,  //24
+  instructions.i25,  //25
+  instructions.i26,  //26
+  instructions.ierr, //27
+  instructions.i28,  //28
+  instructions.i29,  //29
+  instructions.i2a,  //2a
+  instructions.ierr, //2b
+  instructions.i2c,  //2c
+  instructions.i2d,  //2d
+  instructions.i2e,  //2e
+  instructions.ierr, //2f
+  instructions.i30,  //30
+  instructions.i31,  //31
+  instructions.ierr, //32
+  instructions.ierr, //33
+  instructions.ierr, //34
+  instructions.i35,  //35
+  instructions.i36,  //36
+  instructions.ierr, //37
+  instructions.i38,  //38
+  instructions.i39,  //39
+  instructions.ierr, //3a
+  instructions.ierr, //3b
+  instructions.ierr, //3c
+  instructions.i3d,  //3d
+  instructions.i3e,  //3e
+  instructions.ierr, //3f
+  instructions.i40,  //40
+  instructions.i41,  //41
+  instructions.ierr, //42
+  instructions.ierr, //43
+  instructions.ierr, //44
+  instructions.i45,  //45
+  instructions.i46,  //46
+  instructions.ierr, //47
+  instructions.i48,  //48
+  instructions.i49,  //49
+  instructions.i4a,  //4a
+  instructions.ierr, //4b
+  instructions.i4c,  //4c
+  instructions.i4d,  //4d
+  instructions.i4e,  //4e
+  instructions.ierr, //4f
+  instructions.i50,  //50
+  instructions.i51,  //51
+  instructions.ierr, //52
+  instructions.ierr, //53
+  instructions.ierr, //54
+  instructions.i55,  //55
+  instructions.i56,  //56
+  instructions.ierr, //57
+  instructions.i58,  //58
+  instructions.i59,  //59
+  instructions.ierr, //5a
+  instructions.ierr, //5b
+  instructions.ierr, //5c
+  instructions.i5d,  //5d
+  instructions.i5e,  //5e
+  instructions.ierr, //5f
+  instructions.i60,  //60
+  instructions.i61,  //61
+  instructions.ierr, //62
+  instructions.ierr, //63
+  instructions.ierr, //64
+  instructions.i65,  //65
+  instructions.i66,  //66
+  instructions.ierr, //67
+  instructions.i68,  //68
+  instructions.i69,  //69
+  instructions.i6a,  //6a
+  instructions.ierr, //6b
+  instructions.i6c,  //6c
+  instructions.i6d,  //6d
+  instructions.i6e,  //6e
+  instructions.ierr, //6f
+  instructions.i70,  //70
+  instructions.i71,  //71
+  instructions.ierr, //72
+  instructions.ierr, //73
+  instructions.ierr, //74
+  instructions.i75,  //75
+  instructions.i76,  //76
+  instructions.ierr, //77
+  instructions.i78,  //78
+  instructions.i79,  //79
+  instructions.ierr, //7a
+  instructions.ierr, //7b
+  instructions.ierr, //7c
+  instructions.i7d,  //7d
+  instructions.i7e,  //7e
+  instructions.ierr, //7f
+  instructions.ierr, //80
+  instructions.i81,  //81
+  instructions.ierr, //82
+  instructions.ierr, //83
+  instructions.i84,  //84
+  instructions.i85,  //85
+  instructions.i86,  //86
+  instructions.ierr, //87
+  instructions.i88,  //88
+  instructions.ierr, //89
+  instructions.i8a,  //8a
+  instructions.ierr, //8b
+  instructions.i8c,  //8c
+  instructions.i8d,  //8d
+  instructions.i8e,  //8e
+  instructions.ierr, //8f
+  instructions.i90,  //90
+  instructions.i91,  //91
+  instructions.ierr, //92
+  instructions.ierr, //93
+  instructions.i94,  //94
+  instructions.i95,  //95
+  instructions.i96,  //96
+  instructions.ierr, //97
+  instructions.i98,  //98
+  instructions.i99,  //99
+  instructions.i9a,  //9a
+  instructions.ierr, //9b
+  instructions.ierr, //9c
+  instructions.i9d,  //9d
+  instructions.ierr, //9e
+  instructions.ierr, //9f
+  instructions.ia0,  //a0
+  instructions.ia1,  //a1
+  instructions.ia2,  //a2
+  instructions.ierr, //a3
+  instructions.ia4,  //a4
+  instructions.ia5,  //a5
+  instructions.ia6,  //a6
+  instructions.ierr, //a7
+  instructions.ia8,  //a8
+  instructions.ia9,  //a9
+  instructions.iaa,  //aa
+  instructions.ierr, //ab
+  instructions.iac,  //ac
+  instructions.iad,  //ad
+  instructions.iae,  //ae
+  instructions.ierr, //af
+  instructions.ib0,  //b0
+  instructions.ib1,  //b1
+  instructions.ierr, //b2
+  instructions.ierr, //b3
+  instructions.ib4,  //b4
+  instructions.ib5,  //b5
+  instructions.ib6,  //b6
+  instructions.ierr, //b7
+  instructions.ib8,  //b8
+  instructions.ib9,  //b9
+  instructions.iba,  //ba
+  instructions.ierr, //bb
+  instructions.ibc,  //bc
+  instructions.ibd,  //bd
+  instructions.ibe,  //be
+  instructions.ierr, //bf
+  instructions.ic0,  //c0
+  instructions.ic1,  //c1
+  instructions.ierr, //c2
+  instructions.ierr, //c3
+  instructions.ic4,  //c4
+  instructions.ic5,  //c5
+  instructions.ic6,  //c6
+  instructions.ierr, //c7
+  instructions.ic8,  //c8
+  instructions.ic9,  //c9
+  instructions.ica,  //ca
+  instructions.ierr, //cb
+  instructions.icc,  //cc
+  instructions.icd,  //cd
+  instructions.ierr, //ce
+  instructions.ierr, //cf
+  instructions.id0,  //d0
+  instructions.id1,  //d1
+  instructions.ierr, //d2
+  instructions.ierr, //d3
+  instructions.ierr, //d4
+  instructions.id5,  //d5
+  instructions.id6,  //d6
+  instructions.ierr, //d7
+  instructions.id8,  //d8
+  instructions.id9,  //d9
+  instructions.ierr, //da
+  instructions.ierr, //db
+  instructions.ierr, //dc
+  instructions.idd,  //dd
+  instructions.ide,  //de
+  instructions.ierr, //df
+  instructions.ie0,  //e0
+  instructions.ie1,  //e1
+  instructions.ierr, //e2
+  instructions.ierr, //e3
+  instructions.ie4,  //e4
+  instructions.ie5,  //e5
+  instructions.ie6,  //e6
+  instructions.ierr, //e7
+  instructions.ie8,  //e8
+  instructions.ie9,  //e9
+  instructions.iea,  //ea
+  instructions.ierr, //eb
+  instructions.iec,  //ec
+  instructions.ied,  //ed
+  instructions.iee,  //ee
+  instructions.ierr, //ef
+  instructions.if0,  //f0
+  instructions.if1,  //f1
+  instructions.ierr, //f2
+  instructions.ierr, //f3
+  instructions.ierr, //f4
+  instructions.if5,  //f5
+  instructions.if6,  //f6
+  instructions.ierr, //f7
+  instructions.if8,  //f8
+  instructions.if9,  //f9
+  instructions.ierr, //fa
+  instructions.ierr, //fb
+  instructions.ierr, //fc
+  instructions.ifd,  //fd
+  instructions.ife,  //fe
+  instructions.ierr  //ff
 ];
 
 var Opcodes = [
   /* Name, Imm,  ZP,   ZPX,  ZPY,  ABS,  ABSX, ABSY, INDX, INDY, SNGL, BRA */
-  ["ADC", 0x69, 0x65, 0x75, 0x00, 0x6d, 0x7d, 0x79, 0x61, 0x71, 0x00, 0x00],
-  ["AND", 0x29, 0x25, 0x35, 0x00, 0x2d, 0x3d, 0x39, 0x21, 0x31, 0x00, 0x00],
-  ["ASL", 0x00, 0x06, 0x16, 0x00, 0x0e, 0x1e, 0x00, 0x00, 0x00, 0x0a, 0x00],
-  ["BIT", 0x00, 0x24, 0x00, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-  ["BPL", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10],
-  ["BMI", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x30],
-  ["BVC", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x50],
-  ["BVS", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x70],
-  ["BCC", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x90],
-  ["BCS", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xb0],
-  ["BNE", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xd0],
-  ["BEQ", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0],
-  ["CMP", 0xc9, 0xc5, 0xd5, 0x00, 0xcd, 0xdd, 0xd9, 0xc1, 0xd1, 0x00, 0x00],
-  ["CPX", 0xe0, 0xe4, 0x00, 0x00, 0xec, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-  ["CPY", 0xc0, 0xc4, 0x00, 0x00, 0xcc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-  ["DEC", 0x00, 0xc6, 0xd6, 0x00, 0xce, 0xde, 0x00, 0x00, 0x00, 0x00, 0x00],
-  ["EOR", 0x49, 0x45, 0x55, 0x00, 0x4d, 0x5d, 0x59, 0x41, 0x51, 0x00, 0x00],
-  ["CLC", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x00],
-  ["SEC", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x38, 0x00],
-  ["CLI", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x58, 0x00],
-  ["SEI", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x78, 0x00],
-  ["CLV", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xb8, 0x00],
-  ["CLD", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xd8, 0x00],
-  ["SED", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf8, 0x00],
-  ["INC", 0x00, 0xe6, 0xf6, 0x00, 0xee, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00],
-  ["JMP", 0x00, 0x00, 0x00, 0x00, 0x4c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-  ["JSR", 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-  ["LDA", 0xa9, 0xa5, 0xb5, 0x00, 0xad, 0xbd, 0xb9, 0xa1, 0xb1, 0x00, 0x00],
-  ["LDX", 0xa2, 0xa6, 0x00, 0xb6, 0xae, 0x00, 0xbe, 0x00, 0x00, 0x00, 0x00],
-  ["LDY", 0xa0, 0xa4, 0xb4, 0x00, 0xac, 0xbc, 0x00, 0x00, 0x00, 0x00, 0x00],
-  ["LSR", 0x00, 0x46, 0x56, 0x00, 0x4e, 0x5e, 0x00, 0x00, 0x00, 0x4a, 0x00],
-  ["NOP", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xea, 0x00],
-  ["ORA", 0x09, 0x05, 0x15, 0x00, 0x0d, 0x1d, 0x19, 0x01, 0x11, 0x00, 0x00],
-  ["TAX", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xaa, 0x00],
-  ["TXA", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x8a, 0x00],
-  ["DEX", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xca, 0x00],
-  ["INX", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe8, 0x00],
-  ["TAY", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xa8, 0x00],
-  ["TYA", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x98, 0x00],
-  ["DEY", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x88, 0x00],
-  ["INY", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc8, 0x00],
-  ["ROR", 0x00, 0x66, 0x76, 0x00, 0x6e, 0x7e, 0x00, 0x00, 0x00, 0x6a, 0x00],
-  ["ROL", 0x00, 0x26, 0x36, 0x00, 0x2e, 0x3e, 0x00, 0x00, 0x00, 0x2a, 0x00],
-  ["RTI", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00],
-  ["RTS", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x60, 0x00],
-  ["SBC", 0xe9, 0xe5, 0xf5, 0x00, 0xed, 0xfd, 0xf9, 0xe1, 0xf1, 0x00, 0x00],
-  ["STA", 0x00, 0x85, 0x95, 0x00, 0x8d, 0x9d, 0x99, 0x81, 0x91, 0x00, 0x00],
-  ["TXS", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x9a, 0x00],
-  ["TSX", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xba, 0x00],
-  ["PHA", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x00],
-  ["PLA", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0x00],
-  ["PHP", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00],
-  ["PLP", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x28, 0x00],
-  ["STX", 0x00, 0x86, 0x00, 0x96, 0x8e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-  ["STY", 0x00, 0x84, 0x94, 0x00, 0x8c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-  ["---", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+  ["ADC", 0x69, 0x65, 0x75, null, 0x6d, 0x7d, 0x79, 0x61, 0x71, null, null],
+  ["AND", 0x29, 0x25, 0x35, null, 0x2d, 0x3d, 0x39, 0x21, 0x31, null, null],
+  ["ASL", null, 0x06, 0x16, null, 0x0e, 0x1e, null, null, null, 0x0a, null],
+  ["BIT", null, 0x24, null, null, 0x2c, null, null, null, null, null, null],
+  ["BPL", null, null, null, null, null, null, null, null, null, null, 0x10],
+  ["BMI", null, null, null, null, null, null, null, null, null, null, 0x30],
+  ["BVC", null, null, null, null, null, null, null, null, null, null, 0x50],
+  ["BVS", null, null, null, null, null, null, null, null, null, null, 0x70],
+  ["BCC", null, null, null, null, null, null, null, null, null, null, 0x90],
+  ["BCS", null, null, null, null, null, null, null, null, null, null, 0xb0],
+  ["BNE", null, null, null, null, null, null, null, null, null, null, 0xd0],
+  ["BEQ", null, null, null, null, null, null, null, null, null, null, 0xf0],
+  ["BRK", null, null, null, null, null, null, null, null, null, 0x00, null],
+  ["CMP", 0xc9, 0xc5, 0xd5, null, 0xcd, 0xdd, 0xd9, 0xc1, 0xd1, null, null],
+  ["CPX", 0xe0, 0xe4, null, null, 0xec, null, null, null, null, null, null],
+  ["CPY", 0xc0, 0xc4, null, null, 0xcc, null, null, null, null, null, null],
+  ["DEC", null, 0xc6, 0xd6, null, 0xce, 0xde, null, null, null, null, null],
+  ["EOR", 0x49, 0x45, 0x55, null, 0x4d, 0x5d, 0x59, 0x41, 0x51, null, null],
+  ["CLC", null, null, null, null, null, null, null, null, null, 0x18, null],
+  ["SEC", null, null, null, null, null, null, null, null, null, 0x38, null],
+  ["CLI", null, null, null, null, null, null, null, null, null, 0x58, null],
+  ["SEI", null, null, null, null, null, null, null, null, null, 0x78, null],
+  ["CLV", null, null, null, null, null, null, null, null, null, 0xb8, null],
+  ["CLD", null, null, null, null, null, null, null, null, null, 0xd8, null],
+  ["SED", null, null, null, null, null, null, null, null, null, 0xf8, null],
+  ["INC", null, 0xe6, 0xf6, null, 0xee, 0xfe, null, null, null, null, null],
+  ["JMP", null, null, null, null, 0x4c, null, null, null, null, null, null],
+  ["JSR", null, null, null, null, 0x20, null, null, null, null, null, null],
+  ["LDA", 0xa9, 0xa5, 0xb5, null, 0xad, 0xbd, 0xb9, 0xa1, 0xb1, null, null],
+  ["LDX", 0xa2, 0xa6, null, 0xb6, 0xae, null, 0xbe, null, null, null, null],
+  ["LDY", 0xa0, 0xa4, 0xb4, null, 0xac, 0xbc, null, null, null, null, null],
+  ["LSR", null, 0x46, 0x56, null, 0x4e, 0x5e, null, null, null, 0x4a, null],
+  ["NOP", null, null, null, null, null, null, null, null, null, 0xea, null],
+  ["ORA", 0x09, 0x05, 0x15, null, 0x0d, 0x1d, 0x19, 0x01, 0x11, null, null],
+  ["TAX", null, null, null, null, null, null, null, null, null, 0xaa, null],
+  ["TXA", null, null, null, null, null, null, null, null, null, 0x8a, null],
+  ["DEX", null, null, null, null, null, null, null, null, null, 0xca, null],
+  ["INX", null, null, null, null, null, null, null, null, null, 0xe8, null],
+  ["TAY", null, null, null, null, null, null, null, null, null, 0xa8, null],
+  ["TYA", null, null, null, null, null, null, null, null, null, 0x98, null],
+  ["DEY", null, null, null, null, null, null, null, null, null, 0x88, null],
+  ["INY", null, null, null, null, null, null, null, null, null, 0xc8, null],
+  ["ROR", null, 0x66, 0x76, null, 0x6e, 0x7e, null, null, null, 0x6a, null],
+  ["ROL", null, 0x26, 0x36, null, 0x2e, 0x3e, null, null, null, 0x2a, null],
+  ["RTI", null, null, null, null, null, null, null, null, null, 0x40, null],
+  ["RTS", null, null, null, null, null, null, null, null, null, 0x60, null],
+  ["SBC", 0xe9, 0xe5, 0xf5, null, 0xed, 0xfd, 0xf9, 0xe1, 0xf1, null, null],
+  ["STA", null, 0x85, 0x95, null, 0x8d, 0x9d, 0x99, 0x81, 0x91, null, null],
+  ["TXS", null, null, null, null, null, null, null, null, null, 0x9a, null],
+  ["TSX", null, null, null, null, null, null, null, null, null, 0xba, null],
+  ["PHA", null, null, null, null, null, null, null, null, null, 0x48, null],
+  ["PLA", null, null, null, null, null, null, null, null, null, 0x68, null],
+  ["PHP", null, null, null, null, null, null, null, null, null, 0x08, null],
+  ["PLP", null, null, null, null, null, null, null, null, null, 0x28, null],
+  ["STX", null, 0x86, null, 0x96, 0x8e, null, null, null, null, null, null],
+  ["STY", null, 0x84, 0x94, null, 0x8c, null, null, null, null, null, null],
+  ["---", null, null, null, null, null, null, null, null, null, null, null]
 ];
 
 // Initialize everything.
@@ -796,6 +2457,7 @@ function compileLine(input, lineno) {
     return DCB(param);
   }
 
+
   for (o=0; o<Opcodes.length; o++) {
     if (Opcodes[o][0] == command) {
       if (checkSingle(param, Opcodes[o][10])) { return true; }
@@ -844,7 +2506,7 @@ function DCB(param) {
 */
 
 function checkBranch(param, opcode) {
-  if (opcode == 0x00) { return false; }
+  if (opcode == null) { return false; }
 
   addr = -1;
   if (param.match(/\w+/)) {
@@ -866,7 +2528,7 @@ function checkBranch(param, opcode) {
 */
 
 function checkImmediate(param, opcode) {
-  if (opcode == 0x00) { return false; }
+  if (opcode == null) { return false; }
   if (param.match(new RegExp(/^#\$[0-9a-f]{1,2}$/i))) {
     pushByte(opcode);
     value = parseInt(param.replace(/^#\$/, ""), 16);
@@ -921,7 +2583,7 @@ function checkImmediate(param, opcode) {
 */
 
 function checkIndirectX(param, opcode) {
-  if (opcode == 0x00) { return false; }
+  if (opcode == null) { return false; }
   if (param.match(/^\(\$[0-9a-f]{1,2},X\)$/i)) {
     pushByte(opcode);
     value = param.replace(new RegExp(/^\(\$([0-9a-f]{1,2}).*$/i), "$1");
@@ -938,7 +2600,7 @@ function checkIndirectX(param, opcode) {
 */
 
 function checkIndirectY(param, opcode) {
-  if (opcode == 0x00) { return false; }
+  if (opcode == null) { return false; }
   if (param.match(/^\(\$[0-9a-f]{1,2}\),Y$/i)) {
     pushByte(opcode);
     value = param.replace(new RegExp(/^\([\$]([0-9a-f]{1,2}).*$/i), "$1");
@@ -955,7 +2617,7 @@ function checkIndirectY(param, opcode) {
 */
 
 function checkSingle(param, opcode) {
-  if (opcode == 0x00) { return false; }
+  if (opcode === null) { return false; }
   if (param != "") { return false; }
   pushByte(opcode);
   return true;
@@ -967,7 +2629,7 @@ function checkSingle(param, opcode) {
 */
 
 function checkZeroPage(param, opcode) {
-  if (opcode == 0x00) { return false; }
+  if (opcode == null) { return false; }
   if (param.match(/^\$[0-9a-f]{1,2}$/i)) {
     pushByte(opcode);
     value = parseInt(param.replace(/^\$/, ""), 16);
@@ -991,7 +2653,7 @@ function checkZeroPage(param, opcode) {
 */
 
 function checkAbsoluteX(param, opcode) {
-  if (opcode == 0x00) { return false; }
+  if (opcode == null) { return false; }
   if (param.match(/^\$[0-9a-f]{3,4},X$/i)) {
     pushByte(opcode);
     number = param.replace(new RegExp(/^\$([0-9a-f]*),X/i), "$1");
@@ -1024,7 +2686,7 @@ function checkAbsoluteX(param, opcode) {
 */
 
 function checkAbsoluteY(param, opcode) {
-  if (opcode == 0x00) { return false; }
+  if (opcode == null) { return false; }
   if (param.match(/^\$[0-9a-f]{3,4},Y$/i)) {
     pushByte(opcode);
     number = param.replace(new RegExp(/^\$([0-9a-f]*),Y/i), "$1");
@@ -1058,7 +2720,7 @@ function checkAbsoluteY(param, opcode) {
 */
 
 function checkZeroPageX(param, opcode) {
-  if (opcode == 0x00) { return false; }
+  if (opcode == null) { return false; }
   if (param.match(/^\$[0-9a-f]{1,2},X/i)) {
     pushByte(opcode);
     number = param.replace(new RegExp(/^\$([0-9a-f]{1,2}),X/i), "$1");
@@ -1079,7 +2741,7 @@ function checkZeroPageX(param, opcode) {
 }
 
 function checkZeroPageY(param, opcode) {
-  if (opcode == 0x00) { return false; }
+  if (opcode == null) { return false; }
   if (param.match(/^\$[0-9a-f]{1,2},Y/i)) {
     pushByte(opcode);
     number = param.replace(new RegExp(/^\$([0-9a-f]{1,2}),Y/i), "$1");
@@ -1105,7 +2767,7 @@ function checkZeroPageY(param, opcode) {
 */
 
 function checkAbsolute(param, opcode) {
-  if (opcode == 0x00) { return false; }
+  if (opcode == null) { return false; }
   pushByte(opcode);
   if (param.match(/^\$[0-9a-f]{3,4}$/i)) {
     value = parseInt(param.replace(/^\$/, ""), 16);
@@ -1486,1662 +3148,6 @@ function execute() {
     document.getElementById("hexdumpButton").disabled = false;
     document.getElementById("submitCode").disabled = false;
   }
-}
-
-function i00() {
-  codeRunning = false;
-}
-
-function i01() {
-  addr = popByte() + regX;
-  value = memory[addr] + (memory[addr+1] << 8);
-  regA |= value;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i05() {
-  zp = popByte();
-  regA |= memory[zp];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i06() {
-  zp = popByte();
-  value = memory[zp];
-  regP = (regP & 0xfe) | ((value>>7)&1);
-  value = value << 1;
-  memStoreByte(zp, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i08() {
-  stackPush(regP);
-}
-
-function i09() {
-  regA |= popByte();
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i0a() {
-  regP = (regP & 0xfe) | ((regA>>7)&1);
-  regA = regA<<1;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i0d() {
-  regA |= memory[popWord()];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i0e() {
-  addr = popWord();
-  value = memory[addr];
-  regP = (regP & 0xfe) | ((value>>7)&1);
-  value = value << 1;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 2;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i10() {
-  offset = popByte();
-  if ((regP & 0x80) == 0) { jumpBranch(offset); }
-}
-
-function i11() {
-  zp = popByte();
-  value = memory[zp] + (memory[zp+1]<<8) + regY;
-  regA |= memory[value];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i15() {
-  addr = (popByte() + regX) & 0xff;
-  regA |= memory[addr];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i16() {
-  addr = (popByte() + regX) & 0xff;
-  value = memory[addr];
-  regP = (regP & 0xfe) | ((value>>7)&1);
-  value = value << 1;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i18() {
-  regP &= 0xfe;
-}
-
-function i19() {
-  addr = popWord() + regY;
-  regA |= memory[addr];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i1d() {
-  addr = popWord() + regX;
-  regA |= memory[addr];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i1e() {
-  addr = popWord() + regX;
-  value = memory[addr];
-  regP = (regP & 0xfe) | ((value>>7)&1);
-  value = value << 1;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i20() {
-  addr = popWord();
-  currAddr = regPC-1;
-  stackPush(((currAddr >> 8) & 0xff));
-  stackPush((currAddr & 0xff));
-  regPC = addr;
-}
-
-function i21() {
-  addr = (popByte() + regX)&0xff;
-  value = memory[addr]+(memory[addr+1] << 8);
-  regA &= value;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i24() {
-  zp = popByte();
-  value = memory[zp];
-  if (value & regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  regP = (regP & 0x3f) | (value & 0xc0);
-}
-
-function i25() {
-  zp = popByte();
-  regA &= memory[zp];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 2;
-  }
-  if (regA & 0x80) {
-    regP &= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i26() {
-  sf = (regP & 1);
-  addr = popByte();
-  value = memory[addr]; //  & regA;  -- Thanks DMSC ;)
-  regP = (regP & 0xfe) | ((value>>7)&1);
-  value = value << 1;
-  value |= sf;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i28() {
-  regP = stackPop() | 0x20;
-}
-
-function i29() {
-  regA &= popByte();
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i2a() {
-  sf = (regP&1);
-  regP = (regP&0xfe) | ((regA>>7)&1);
-  regA = regA << 1;
-  regA |= sf;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i2c() {
-  value = memory[popWord()];
-  if (value & regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  regP = (regP & 0x3f) | (value & 0xc0);
-}
-
-function i2d() {
-  value = memory[popWord()];
-  regA &= value;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i2e() {
-  sf = regP & 1;
-  addr = popWord();
-  value = memory[addr];
-  regP = (regP & 0xfe) | ((value>>7)&1);
-  value = value << 1;
-  value |= sf;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i30() {
-  offset = popByte();
-  if (regP & 0x80) { jumpBranch(offset); }
-}
-
-function i31() {
-  zp = popByte();
-  value = memory[zp]+(memory[zp+1]<<8) + regY;
-  regA &= memory[value];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i35() {
-  zp = popByte();
-  value = memory[zp]+(memory[zp+1]<<8) + regX;
-  regA &= memory[value];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i36() {
-  sf = regP & 1;
-  addr = (popByte() + regX) & 0xff;
-  value = memory[addr];
-  regP = (regP & 0xfe) | ((value>>7)&1);
-  value = value << 1;
-  value |= sf;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i38() {
-  regP |= 1;
-}
-
-function i39() {
-  addr = popWord() + regY;
-  value = memory[addr];
-  regA &= value;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i3d() {
-  addr = popWord() + regX;
-  value = memory[addr];
-  regA &= value;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i3e() {
-  sf = regP&1;
-  addr = popWord() + regX;
-  value = memory[addr];
-  regP = (regP & 0xfe) | ((value>>7)&1);
-  value = value << 1;
-  value |= sf;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i40() {
-}
-
-function i41() {
-  zp = (popByte() + regX)&0xff;
-  value = memory[zp]+ (memory[zp+1]<<8);
-  regA ^= memory[value];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i45() {
-  addr = (popByte() + regX) & 0xff;
-  value = memory[addr];
-  regA ^= value;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i46() {
-  addr = popByte() & 0xff;
-  value = memory[addr];
-  regP = (regP & 0xfe) | (value&1);
-  value = value >> 1;
-  memStoreByte(addr, value);
-  if (value != 0) {
-    regP &= 0xfd;
-  } else {
-    regP |= 2;
-  }
-  if ((value&0x80) == 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i48() {
-  stackPush(regA);
-}
-
-function i49() {
-  regA ^= popByte();
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i4a() {
-  regP = (regP&0xfe) | (regA&1);
-  regA = regA >> 1;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i4c() {
-  regPC = popWord();
-}
-
-function i4d() {
-  addr = popWord();
-  value = memory[addr];
-  regA ^= value;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i4e() {
-  addr = popWord();
-  value = memory[addr];
-  regP = (regP&0xfe)|(value&1);
-  value = value >> 1;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i50() {
-  offset = popByte();
-  if ((regP & 0x40) == 0) { jumpBranch(offset); }
-}
-
-function i51() {
-  zp = popByte();
-  value = memory[zp] + (memory[zp+1]<<8) + regY;
-  regA ^= memory[value];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i55() {
-  addr = (popByte() + regX) & 0xff;
-  regA ^= memory[ addr ];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i56() {
-  addr = (popByte() + regX) & 0xff;
-  value = memory[ addr ];
-  regP = (regP&0xfe) | (value&1);
-  value = value >> 1;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i58() {
-}
-
-function i59() {
-  addr = popWord() + regY;
-  value = memory[ addr ];
-  regA ^= value;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i5d() {
-  addr = popWord() + regX;
-  value = memory[ addr ];
-  regA ^= value;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i5e() {
-  addr = popWord() + regX;
-  value = memory[ addr ];
-  regP = (regP&0xfe) | (value&1);
-  value = value >> 1;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i60() {
-  regPC = (stackPop()+1) | (stackPop()<<8);
-}
-
-function i61() {
-  zp = (popByte() + regX)&0xff;
-  addr = memory[zp] + (memory[zp+1]<<8);
-  value = memory[ addr ];
-  testADC(value);
-}
-
-function i65() {
-  addr = popByte();
-  value = memory[ addr ];
-  testADC(value);
-}
-
-function i66() {
-  sf = regP&1;
-  addr = popByte();
-  value = memory[ addr ];
-  regP = (regP&0xfe)|(value&1);
-  value = value >> 1;
-  if (sf) { value |= 0x80; }
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i68() {
-  regA = stackPop();
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i69() {
-  value = popByte();
-  testADC(value);
-}
-
-function i6a() {
-  sf = regP&1;
-  regP = (regP&0xfe) | (regA&1);
-  regA = regA >> 1;
-  if (sf) { regA |= 0x80; }
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i6c() {
-}
-
-function i6d() {
-  addr = popWord();
-  value = memory[ addr ];
-  testADC(value);
-}
-
-function i6e() {
-  sf = regP&1;
-  addr = popWord();
-  value = memory[ addr ];
-  regP = (regP&0xfe)|(value&1);
-  value = value >> 1;
-  if (sf) { value |= 0x80; }
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i70() {
-  offset = popByte();
-  if (regP & 0x40) { jumpBranch(offset); }
-}
-
-function i71() {
-  zp = popByte();
-  addr = memory[zp] + (memory[zp+1]<<8);
-  value = memory[ addr + regY ];
-  testADC(value);
-}
-
-function i75() {
-  addr = (popByte() + regX) & 0xff;
-  value = memory[ addr ];
-  regP = (regP&0xfe) | (value&1);
-  testADC(value);
-}
-
-function i76() {
-  sf = (regP&1);
-  addr = (popByte() + regX) & 0xff;
-  value = memory[ addr ];
-  regP = (regP&0xfe) | (value&1);
-  value = value >> 1;
-  if (sf) { value |= 0x80; }
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i78() {
-}
-
-function i79() {
-  addr = popWord();
-  value = memory[ addr + regY ];
-  testADC(value);
-}
-
-function i7d() {
-  addr = popWord();
-  value = memory[ addr + regX ];
-  testADC(value);
-}
-
-function i7e() {
-  sf = regP&1;
-  addr = popWord() + regX;
-  value = memory[ addr ];
-  regP = (regP&0xfe) | (value&1);
-  value = value >> 1;
-  if (value) { value |= 0x80; }
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i81() {
-  zp = (popByte()+regX)&0xff;
-  addr = memory[zp] + (memory[zp+1]<<8);
-  memStoreByte(addr, regA);
-}
-
-function i84() {
-  memStoreByte(popByte(), regY);
-}
-
-function i85() {
-  memStoreByte(popByte(), regA);
-}
-
-function i86() {
-  memStoreByte(popByte(), regX);
-}
-
-function i88() {
-  regY = (regY-1) & 0xff;
-  if (regY) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regY & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i8a() {
-  regA = regX & 0xff;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i8c() {
-  memStoreByte(popWord(), regY);
-}
-
-function i8d() {
-  memStoreByte(popWord(), regA);
-}
-
-function i8e() {
-  memStoreByte(popWord(), regX);
-}
-
-function i90() {
-  offset = popByte();
-  if ((regP & 1) == 0) { jumpBranch(offset); }
-}
-
-function i91() {
-  zp = popByte();
-  addr = memory[zp] + (memory[zp+1]<<8) + regY;
-  memStoreByte(addr, regA);
-}
-
-function i94() {
-  memStoreByte(popByte() + regX, regY);
-}
-
-function i95() {
-  memStoreByte(popByte() + regX, regA);
-}
-
-function i96() {
-  memStoreByte(popByte() + regY, regX);
-}
-
-function i98() {
-  regA = regY & 0xff;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function i99() {
-  memStoreByte(popWord() + regY, regA);
-}
-
-function i9a() {
-  regSP = regX & 0xff;
-}
-
-function i9d() {
-  addr = popWord();
-  memStoreByte(addr + regX, regA);
-}
-
-function ia0() {
-  regY = popByte();
-  if (regY) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regY & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ia1() {
-  zp = (popByte()+regX)&0xff;
-  addr = memory[zp] + (memory[zp+1]<<8);
-  regA = memory[ addr ];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ia2() {
-  regX = popByte();
-  if (regX) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regX & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ia4() {
-  regY = memory[ popByte() ];
-  if (regY) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regY & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ia5() {
-  regA = memory[ popByte() ];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ia6() {
-  regX = memory[ popByte() ];
-  if (regX) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regX & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ia8() {
-  regY = regA & 0xff;
-  if (regY) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regY & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ia9() {
-  regA = popByte();
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function iaa() {
-  regX = regA & 0xff;
-  if (regX) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regX & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function iac() {
-  regY = memory[ popWord() ];
-  if (regY) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regY & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function iad() {
-  regA = memory[ popWord() ];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function iae() {
-  regX = memory[ popWord() ];
-  if (regX) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regX & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ib0() {
-  offset = popByte();
-  if (regP & 1) { jumpBranch(offset); }
-}
-
-function ib1() {
-  zp = popByte();
-  addr = memory[zp] + (memory[zp+1]<<8) + regY;
-  regA = memory[ addr ];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ib4() {
-  regY = memory[ popByte() + regX ];
-  if (regY) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regY & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ib5() {
-  regA = memory[ (popByte() + regX) & 0xff ];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ib6() {
-  regX = memory[ popByte() + regY ];
-  if (regX) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regX & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ib8() {
-  regP &= 0xbf;
-}
-
-function ib9() {
-  addr = popWord() + regY;
-  regA = memory[ addr ];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function iba() {
-  regX = regSP & 0xff;
-}
-
-function ibc() {
-  addr = popWord() + regX;
-  regY = memory[ addr ];
-  if (regY) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regY & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ibd() {
-  addr = popWord() + regX;
-  regA = memory[ addr ];
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ibe() {
-  addr = popWord() + regY;
-  regX = memory[ addr ];
-  if (regX) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regX & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ic0() {
-  value = popByte();
-  if ((regY+value) > 0xff) {
-    regP |= 1;
-  } else {
-    regP &= 0xfe;
-  }
-  ov = value;
-  value = (regY-value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ic1() {
-  zp = popByte();
-  addr = memory[zp] + (memory[zp+1]<<8) + regY;
-  value = memory[ addr ];
-  doCompare(regA, value);
-}
-
-function ic4() {
-  value = memory[ popByte() ];
-  doCompare(regY, value);
-}
-
-function ic5() {
-  value = memory[ popByte() ];
-  doCompare(regA, value);
-}
-
-function ic6() {
-  zp = popByte();
-  value = memory[ zp ];
-  --value;
-  memStoreByte(zp, value&0xff);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ic8() {
-  regY = (regY + 1) & 0xff;
-  if (regY) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regY & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ic9() {
-  value = popByte();
-  doCompare(regA, value);
-}
-
-function ica() {
-  regX = (regX-1) & 0xff;
-  if (regX) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regX & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function icc() {
-  value = memory[ popWord() ];
-  doCompare(regY, value);
-}
-
-function icd() {
-  value = memory[ popWord() ];
-  doCompare(regA, value);
-}
-
-function ice() {
-  addr = popWord();
-  value = memory[ addr ];
-  --value;
-  value = value&0xff;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function id0() {
-  offset = popByte();
-  if ((regP&2)==0) { jumpBranch(offset); }
-}
-
-function id1() {
-  zp = popByte();
-  addr = memory[zp] + (memory[zp+1]<<8) + regY;
-  value = memory[ addr ];
-  doCompare(regA, value);
-}
-
-function id5() {
-  value = memory[ popByte() + regX ];
-  doCompare(regA, value);
-}
-
-function id6() {
-  addr = popByte() + regX;
-  value = memory[ addr ];
-  --value;
-  value = value&0xff;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function id8() {
-  regP &= 0xf7;
-}
-
-function id9() {
-  addr = popWord() + regY;
-  value = memory[ addr ];
-  doCompare(regA, value);
-}
-
-function idd() {
-  addr = popWord() + regX;
-  value = memory[ addr ];
-  doCompare(regA, value);
-}
-
-function ide() {
-  addr = popWord() + regX;
-  value = memory[ addr ];
-  --value;
-  value = value&0xff;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ie0() {
-  value = popByte();
-  doCompare(regX, value);
-}
-
-function ie1() {
-  zp = (popByte()+regX)&0xff;
-  addr = memory[zp] + (memory[zp+1]<<8);
-  value = memory[ addr ];
-  testSBC(value);
-}
-
-function ie4() {
-  value = memory[ popByte() ];
-  doCompare(regX, value);
-}
-
-function ie5() {
-  addr = popByte();
-  value = memory[ addr ];
-  testSBC(value);
-}
-
-function ie6() {
-  zp = popByte();
-  value = memory[ zp ];
-  ++value;
-  value = (value)&0xff;
-  memStoreByte(zp, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ie8() {
-  regX = (regX + 1) & 0xff;
-  if (regX) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regX & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ie9() {
-  value = popByte();
-  testSBC(value);
-}
-
-function iea() {
-}
-
-function iec() {
-  value = memory[ popWord() ];
-  doCompare(regX, value);
-}
-
-function ied() {
-  addr = popWord();
-  value = memory[ addr ];
-  testSBC(value);
-}
-
-function iee() {
-  addr = popWord();
-  value = memory[ addr ];
-  ++value;
-  value = (value)&0xff;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function if0() {
-  offset = popByte();
-  if (regP&2) { jumpBranch(offset); }
-}
-
-function if1() {
-  zp = popByte();
-  addr = memory[zp] + (memory[zp+1]<<8);
-  value = memory[ addr + regY ];
-  testSBC(value);
-}
-
-function if5() {
-  addr = (popByte() + regX)&0xff;
-  value = memory[ addr ];
-  regP = (regP&0xfe)|(value&1);
-  testSBC(value);
-}
-
-function if6() {
-  addr = popByte() + regX;
-  value = memory[ addr ];
-  ++value;
-  value=value&0xff;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function if8() {
-  regP |= 8;
-}
-
-function if9() {
-  addr = popWord();
-  value = memory[ addr + regY ];
-  testSBC(value);
-}
-
-function ifd() {
-  addr = popWord();
-  value = memory[ addr + regX ];
-  testSBC(value);
-}
-
-function ife() {
-  addr = popWord() + regX;
-  value = memory[ addr ];
-  ++value;
-  value=value&0xff;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function ierr() {
-  message("Address $" + addr2hex(regPC) + " - unknown opcode " + opcode);
-  codeRunning = false;
 }
 
 
