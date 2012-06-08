@@ -34,42 +34,65 @@ var palette = [
   "#777777", "#aaff66", "#0088ff", "#bbbbbb"
 ];
 
+function setZeroFlag(value) {
+  if (value) {
+    regP &= 0xfd;
+  } else {
+    regP |= 0x02;
+  }
+}
+
+function setNegativeFlag(value) {
+  if (value & 0x80) {
+    regP |= 0x80;
+  } else {
+    regP &= 0x7f;
+  }
+}
+
+function ORA() {
+  setZeroFlag(regA);
+  setNegativeFlag(regA);
+}
+
+function ASL(value) {
+  setZeroFlag(value);
+  setNegativeFlag(value);
+}
+
+function AND() {
+  setZeroFlag(regA);
+  setNegativeFlag(regA);
+}
+
+function BIT(value) {
+  setZeroFlag(value);
+  regP = (regP & 0x3f) | (value & 0xc0);
+}
+
+function ROL(value) {
+  setZeroFlag(value);
+  setNegativeFlag(value);
+}
 
 var instructions = {
 
   i00: function () {
     codeRunning = false;
+    //BRK
   },
 
   i01: function () {
     addr = popByte() + regX;
     value = memory[addr] + (memory[addr+1] << 8);
     regA |= value;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ORA();
   },
 
   i05: function () {
     zp = popByte();
     regA |= memory[zp];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ORA();
   },
 
   i06: function () {
@@ -78,63 +101,28 @@ var instructions = {
     regP = (regP & 0xfe) | ((value>>7)&1);
     value = value << 1;
     memStoreByte(zp, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ASL(value);
   },
 
   i08: function () {
     stackPush(regP);
+    //PHP
   },
 
   i09: function () {
     regA |= popByte();
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ORA();
   },
 
   i0a: function () {
     regP = (regP & 0xfe) | ((regA>>7)&1);
     regA = regA<<1;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ASL(regA);
   },
 
   i0d: function () {
     regA |= memory[popWord()];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ORA();
   },
 
   i0e: function () {
@@ -143,52 +131,26 @@ var instructions = {
     regP = (regP & 0xfe) | ((value>>7)&1);
     value = value << 1;
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 2;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ASL(value);
   },
 
   i10: function () {
     offset = popByte();
     if ((regP & 0x80) == 0) { jumpBranch(offset); }
+    //BPL
   },
 
   i11: function () {
     zp = popByte();
     value = memory[zp] + (memory[zp+1]<<8) + regY;
     regA |= memory[value];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ORA();
   },
 
   i15: function () {
     addr = (popByte() + regX) & 0xff;
     regA |= memory[addr];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ORA();
   },
 
   i16: function () {
@@ -197,50 +159,24 @@ var instructions = {
     regP = (regP & 0xfe) | ((value>>7)&1);
     value = value << 1;
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ASL(value);
   },
 
   i18: function () {
     regP &= 0xfe;
+    //CLC
   },
 
   i19: function () {
     addr = popWord() + regY;
     regA |= memory[addr];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ORA();
   },
 
   i1d: function () {
     addr = popWord() + regX;
     regA |= memory[addr];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ORA();
   },
 
   i1e: function () {
@@ -249,16 +185,7 @@ var instructions = {
     regP = (regP & 0xfe) | ((value>>7)&1);
     value = value << 1;
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ASL(value);
   },
 
   i20: function () {
@@ -267,86 +194,47 @@ var instructions = {
     stackPush(((currAddr >> 8) & 0xff));
     stackPush((currAddr & 0xff));
     regPC = addr;
+    //JSR
   },
 
   i21: function () {
     addr = (popByte() + regX)&0xff;
     value = memory[addr]+(memory[addr+1] << 8);
     regA &= value;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    AND();
   },
 
   i24: function () {
     zp = popByte();
     value = memory[zp];
-    if (value & regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    regP = (regP & 0x3f) | (value & 0xc0);
+    BIT(value);
   },
 
   i25: function () {
     zp = popByte();
     regA &= memory[zp];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 2;
-    }
-    if (regA & 0x80) {
-      regP &= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    AND();
   },
 
   i26: function () {
     sf = (regP & 1);
     addr = popByte();
     value = memory[addr]; //  & regA;  -- Thanks DMSC ;)
-    regP = (regP & 0xfe) | ((value>>7)&1);
-  value = value << 1;
-  value |= sf;
-  memStoreByte(addr, value);
-  if (value) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (value & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
+    regP = (regP & 0xfe) | ((value>>7) & 1);
+    value = value << 1;
+    value |= sf;
+    memStoreByte(addr, value);
+    ROL(value);
   },
 
   i28: function () {
     regP = stackPop() | 0x20;
+    //PLP
   },
 
   i29: function () {
     regA &= popByte();
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    AND();
   },
 
   i2a: function () {
@@ -354,41 +242,18 @@ var instructions = {
     regP = (regP&0xfe) | ((regA>>7)&1);
     regA = regA << 1;
     regA |= sf;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ROL(regA);
   },
 
   i2c: function () {
     value = memory[popWord()];
-    if (value & regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    regP = (regP & 0x3f) | (value & 0xc0);
+    BIT(value);
   },
 
   i2d: function () {
     value = memory[popWord()];
     regA &= value;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    AND();
   },
 
   i2e: function () {
@@ -399,53 +264,27 @@ var instructions = {
     value = value << 1;
     value |= sf;
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ROL(value);
   },
 
   i30: function () {
     offset = popByte();
     if (regP & 0x80) { jumpBranch(offset); }
+    //BMI
   },
 
   i31: function () {
     zp = popByte();
     value = memory[zp]+(memory[zp+1]<<8) + regY;
     regA &= memory[value];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    AND();
   },
 
   i35: function () {
     zp = popByte();
     value = memory[zp]+(memory[zp+1]<<8) + regX;
     regA &= memory[value];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    AND();
   },
 
   i36: function () {
@@ -456,52 +295,26 @@ var instructions = {
     value = value << 1;
     value |= sf;
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ROL(value);
   },
 
   i38: function () {
     regP |= 1;
+    //SEC
   },
 
   i39: function () {
     addr = popWord() + regY;
     value = memory[addr];
     regA &= value;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    AND();
   },
 
   i3d: function () {
     addr = popWord() + regX;
     value = memory[addr];
     regA &= value;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    AND();
   },
 
   i3e: function () {
@@ -512,19 +325,12 @@ var instructions = {
     value = value << 1;
     value |= sf;
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ROL(value);
   },
 
   i40: function () {
+    throw new Error("Not implemented");
+    //RTI
   },
 
   i41: function () {
@@ -1694,269 +1500,141 @@ var instructions = {
   }
 }
 
-function executeNextInstruction() {
-  var instructionName = inst[popByte()];
-  instructions[instructionName]();
+function jumpBranch(offset) {
+  if (offset > 0x7f) {
+    regPC = (regPC - (0x100 - offset));
+  } else {
+    regPC = (regPC + offset);
+  }
 }
 
-var inst = [
-  'i00',  //00
-  'i01',  //01
-  'ierr', //02
-  'ierr', //03
-  'ierr', //04
-  'i05',  //05
-  'i06',  //06
-  'ierr', //07
-  'i08',  //08
-  'i09',  //09
-  'i0a',  //0a
-  'ierr', //0b
-  'ierr', //0c
-  'i0d',  //0d
-  'i0e',  //0e
-  'ierr', //0f
-  'i10',  //10
-  'i11',  //11
-  'ierr', //12
-  'ierr', //13
-  'ierr', //14
-  'i15',  //15
-  'i16',  //16
-  'ierr', //17
-  'i18',  //18
-  'i19',  //19
-  'ierr', //1a
-  'ierr', //1b
-  'ierr', //1c
-  'i1d',  //1d
-  'i1e',  //1e
-  'ierr', //1f
-  'i20',  //20
-  'i21',  //21
-  'ierr', //22
-  'ierr', //23
-  'i24',  //24
-  'i25',  //25
-  'i26',  //26
-  'ierr', //27
-  'i28',  //28
-  'i29',  //29
-  'i2a',  //2a
-  'ierr', //2b
-  'i2c',  //2c
-  'i2d',  //2d
-  'i2e',  //2e
-  'ierr', //2f
-  'i30',  //30
-  'i31',  //31
-  'ierr', //32
-  'ierr', //33
-  'ierr', //34
-  'i35',  //35
-  'i36',  //36
-  'ierr', //37
-  'i38',  //38
-  'i39',  //39
-  'ierr', //3a
-  'ierr', //3b
-  'ierr', //3c
-  'i3d',  //3d
-  'i3e',  //3e
-  'ierr', //3f
-  'i40',  //40
-  'i41',  //41
-  'ierr', //42
-  'ierr', //43
-  'ierr', //44
-  'i45',  //45
-  'i46',  //46
-  'ierr', //47
-  'i48',  //48
-  'i49',  //49
-  'i4a',  //4a
-  'ierr', //4b
-  'i4c',  //4c
-  'i4d',  //4d
-  'i4e',  //4e
-  'ierr', //4f
-  'i50',  //50
-  'i51',  //51
-  'ierr', //52
-  'ierr', //53
-  'ierr', //54
-  'i55',  //55
-  'i56',  //56
-  'ierr', //57
-  'i58',  //58
-  'i59',  //59
-  'ierr', //5a
-  'ierr', //5b
-  'ierr', //5c
-  'i5d',  //5d
-  'i5e',  //5e
-  'ierr', //5f
-  'i60',  //60
-  'i61',  //61
-  'ierr', //62
-  'ierr', //63
-  'ierr', //64
-  'i65',  //65
-  'i66',  //66
-  'ierr', //67
-  'i68',  //68
-  'i69',  //69
-  'i6a',  //6a
-  'ierr', //6b
-  'i6c',  //6c
-  'i6d',  //6d
-  'i6e',  //6e
-  'ierr', //6f
-  'i70',  //70
-  'i71',  //71
-  'ierr', //72
-  'ierr', //73
-  'ierr', //74
-  'i75',  //75
-  'i76',  //76
-  'ierr', //77
-  'i78',  //78
-  'i79',  //79
-  'ierr', //7a
-  'ierr', //7b
-  'ierr', //7c
-  'i7d',  //7d
-  'i7e',  //7e
-  'ierr', //7f
-  'ierr', //80
-  'i81',  //81
-  'ierr', //82
-  'ierr', //83
-  'i84',  //84
-  'i85',  //85
-  'i86',  //86
-  'ierr', //87
-  'i88',  //88
-  'ierr', //89
-  'i8a',  //8a
-  'ierr', //8b
-  'i8c',  //8c
-  'i8d',  //8d
-  'i8e',  //8e
-  'ierr', //8f
-  'i90',  //90
-  'i91',  //91
-  'ierr', //92
-  'ierr', //93
-  'i94',  //94
-  'i95',  //95
-  'i96',  //96
-  'ierr', //97
-  'i98',  //98
-  'i99',  //99
-  'i9a',  //9a
-  'ierr', //9b
-  'ierr', //9c
-  'i9d',  //9d
-  'ierr', //9e
-  'ierr', //9f
-  'ia0',  //a0
-  'ia1',  //a1
-  'ia2',  //a2
-  'ierr', //a3
-  'ia4',  //a4
-  'ia5',  //a5
-  'ia6',  //a6
-  'ierr', //a7
-  'ia8',  //a8
-  'ia9',  //a9
-  'iaa',  //aa
-  'ierr', //ab
-  'iac',  //ac
-  'iad',  //ad
-  'iae',  //ae
-  'ierr', //af
-  'ib0',  //b0
-  'ib1',  //b1
-  'ierr', //b2
-  'ierr', //b3
-  'ib4',  //b4
-  'ib5',  //b5
-  'ib6',  //b6
-  'ierr', //b7
-  'ib8',  //b8
-  'ib9',  //b9
-  'iba',  //ba
-  'ierr', //bb
-  'ibc',  //bc
-  'ibd',  //bd
-  'ibe',  //be
-  'ierr', //bf
-  'ic0',  //c0
-  'ic1',  //c1
-  'ierr', //c2
-  'ierr', //c3
-  'ic4',  //c4
-  'ic5',  //c5
-  'ic6',  //c6
-  'ierr', //c7
-  'ic8',  //c8
-  'ic9',  //c9
-  'ica',  //ca
-  'ierr', //cb
-  'icc',  //cc
-  'icd',  //cd
-  'ierr', //ce
-  'ierr', //cf
-  'id0',  //d0
-  'id1',  //d1
-  'ierr', //d2
-  'ierr', //d3
-  'ierr', //d4
-  'id5',  //d5
-  'id6',  //d6
-  'ierr', //d7
-  'id8',  //d8
-  'id9',  //d9
-  'ierr', //da
-  'ierr', //db
-  'ierr', //dc
-  'idd',  //dd
-  'ide',  //de
-  'ierr', //df
-  'ie0',  //e0
-  'ie1',  //e1
-  'ierr', //e2
-  'ierr', //e3
-  'ie4',  //e4
-  'ie5',  //e5
-  'ie6',  //e6
-  'ierr', //e7
-  'ie8',  //e8
-  'ie9',  //e9
-  'iea',  //ea
-  'ierr', //eb
-  'iec',  //ec
-  'ied',  //ed
-  'iee',  //ee
-  'ierr', //ef
-  'if0',  //f0
-  'if1',  //f1
-  'ierr', //f2
-  'ierr', //f3
-  'ierr', //f4
-  'if5',  //f5
-  'if6',  //f6
-  'ierr', //f7
-  'if8',  //f8
-  'if9',  //f9
-  'ierr', //fa
-  'ierr', //fb
-  'ierr', //fc
-  'ifd',  //fd
-  'ife',  //fe
-  'ierr'  //ff
-];
+function doCompare(reg, val) {
+  //  if ((reg+val) > 0xff) regP |= 1; else regP &= 0xfe;
+  if (reg>=val) {
+    regP |= 1;
+  } else {
+    regP &= 0xfe; // Thanks, "Guest"
+  }
+  val = (reg-val);
+  if (val) {
+    regP &= 0xfd;
+  } else {
+    regP |= 0x02;
+  }
+  if (val & 0x80) {
+    regP |= 0x80;
+  } else {
+    regP &= 0x7f;
+  }
+}
+
+function testSBC(value) {
+  if ((regA ^ value) & 0x80) {
+    vflag = 1;
+  } else {
+    vflag = 0;
+  }
+
+  if (regP & 8) {
+    tmp = 0xf + (regA & 0xf) - (value & 0xf) + (regP&1);
+    if (tmp < 0x10) {
+      w = 0;
+      tmp -= 6;
+    } else {
+      w = 0x10;
+      tmp -= 0x10;
+    }
+    w += 0xf0 + (regA & 0xf0) - (value & 0xf0);
+    if (w < 0x100) {
+      regP &= 0xfe;
+      if ((regP&0xbf) && w<0x80) { regP&=0xbf; }
+      w -= 0x60;
+    } else {
+      regP |= 1;
+      if ((regP&0xbf) && w>=0x180) { regP&=0xbf; }
+    }
+    w += tmp;
+  } else {
+    w = 0xff + regA - value + (regP&1);
+    if (w<0x100) {
+      regP &= 0xfe;
+      if ((regP&0xbf) && w<0x80) { regP&=0xbf; }
+    } else {
+      regP |= 1;
+      if ((regP&0xbf) && w>= 0x180) { regP&=0xbf; }
+    }
+  }
+  regA = w & 0xff;
+  if (regA) {
+    regP &= 0xfd;
+  } else {
+    regP |= 0x02;
+  }
+  if (regA & 0x80) {
+    regP |= 0x80;
+  } else {
+    regP &= 0x7f;
+  }
+}
+
+function testADC(value) {
+  if ((regA ^ value) & 0x80) {
+    regP &= 0xbf;
+  } else {
+    regP |= 0x40;
+  }
+
+  if (regP & 8) {
+    tmp = (regA & 0xf) + (value & 0xf) + (regP&1);
+    if (tmp >= 10) {
+      tmp = 0x10 | ((tmp+6)&0xf);
+    }
+    tmp += (regA & 0xf0) + (value & 0xf0);
+    if (tmp >= 160) {
+      regP |= 1;
+      if ((regP&0xbf) && tmp >= 0x180) { regP &= 0xbf; }
+      tmp += 0x60;
+    } else {
+      regP &= 0xfe;
+      if ((regP&0xbf) && tmp<0x80) { regP &= 0xbf; }
+    }
+  } else {
+    tmp = regA + value + (regP&1);
+    if (tmp >= 0x100) {
+      regP |= 1;
+      if ((regP&0xbf) && tmp>=0x180) { regP &= 0xbf; }
+    } else {
+      regP &= 0xfe;
+      if ((regP&0xbf) && tmp<0x80) { regP &= 0xbf; }
+    }
+  }
+  regA = tmp & 0xff;
+  if (regA) {
+    regP &= 0xfd;
+  } else {
+    regP |= 0x02;
+  }
+  if (regA & 0x80) {
+    regP |= 0x80;
+  } else {
+    regP &= 0x7f;
+  }
+}
+
+
+function executeNextInstruction() {
+  var instructionName = popByte().toString(16).toLowerCase();
+  if (instructionName.length == 1) {
+    instructionName = '0' + instructionName;
+  }
+  var instruction = instructions['i' + instructionName];
+
+  if (instruction) {
+    instruction();
+  } else {
+    instructions.ierr();
+  }
+}
 
 var Opcodes = [
   /* Name, Imm,  ZP,   ZPX,  ZPY,  ABS,  ABSX, ABSY, INDX, INDY, SNGL, BRA */
@@ -2945,132 +2623,6 @@ function runBinary() {
     myInterval = setInterval(multiexecute, 30);
     $('#stepButton').attr('disabled', !debug);
     $('#gotoButton').attr('disabled', !debug);
-  }
-}
-
-/*
-*  readZeroPage() - Get value from ZP
-*
-*/
-
-function jumpBranch(offset) {
-  if (offset > 0x7f) {
-    regPC = (regPC - (0x100 - offset));
-  } else {
-    regPC = (regPC + offset);
-  }
-}
-
-function doCompare(reg, val) {
-  //  if ((reg+val) > 0xff) regP |= 1; else regP &= 0xfe;
-  if (reg>=val) {
-    regP |= 1;
-  } else {
-    regP &= 0xfe; // Thanks, "Guest"
-  }
-  val = (reg-val);
-  if (val) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (val & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function testSBC(value) {
-  if ((regA ^ value) & 0x80) {
-    vflag = 1;
-  } else {
-    vflag = 0;
-  }
-
-  if (regP & 8) {
-    tmp = 0xf + (regA & 0xf) - (value & 0xf) + (regP&1);
-    if (tmp < 0x10) {
-      w = 0;
-      tmp -= 6;
-    } else {
-      w = 0x10;
-      tmp -= 0x10;
-    }
-    w += 0xf0 + (regA & 0xf0) - (value & 0xf0);
-    if (w < 0x100) {
-      regP &= 0xfe;
-      if ((regP&0xbf) && w<0x80) { regP&=0xbf; }
-      w -= 0x60;
-    } else {
-      regP |= 1;
-      if ((regP&0xbf) && w>=0x180) { regP&=0xbf; }
-    }
-    w += tmp;
-  } else {
-    w = 0xff + regA - value + (regP&1);
-    if (w<0x100) {
-      regP &= 0xfe;
-      if ((regP&0xbf) && w<0x80) { regP&=0xbf; }
-    } else {
-      regP |= 1;
-      if ((regP&0xbf) && w>= 0x180) { regP&=0xbf; }
-    }
-  }
-  regA = w & 0xff;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
-}
-
-function testADC(value) {
-  if ((regA ^ value) & 0x80) {
-    regP &= 0xbf;
-  } else {
-    regP |= 0x40;
-  }
-
-  if (regP & 8) {
-    tmp = (regA & 0xf) + (value & 0xf) + (regP&1);
-    if (tmp >= 10) {
-      tmp = 0x10 | ((tmp+6)&0xf);
-    }
-    tmp += (regA & 0xf0) + (value & 0xf0);
-    if (tmp >= 160) {
-      regP |= 1;
-      if ((regP&0xbf) && tmp >= 0x180) { regP &= 0xbf; }
-      tmp += 0x60;
-    } else {
-      regP &= 0xfe;
-      if ((regP&0xbf) && tmp<0x80) { regP &= 0xbf; }
-    }
-  } else {
-    tmp = regA + value + (regP&1);
-    if (tmp >= 0x100) {
-      regP |= 1;
-      if ((regP&0xbf) && tmp>=0x180) { regP &= 0xbf; }
-    } else {
-      regP &= 0xfe;
-      if ((regP&0xbf) && tmp<0x80) { regP &= 0xbf; }
-    }
-  }
-  regA = tmp & 0xff;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
   }
 }
 
