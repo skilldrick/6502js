@@ -19,8 +19,7 @@ var regPC = 0x600;
 var regSP = 0x100;
 var memory = new Array(0x600);
 var runForever = false;
-var labelIndex = [];
-var labelPtr = 0;
+var labels = new Labels();
 var codeRunning = false;
 var xmlhttp;
 var myInterval;
@@ -2087,8 +2086,8 @@ function updateDebugInfo() {
 function gotoAddr() {
   var inp = prompt("Enter address or label", "");
   var addr = 0;
-  if (findLabel(inp)) {
-    addr = getLabelPC(inp);
+  if (labels.find(inp)) {
+    addr = labels.getPC(inp);
   } else {
     if (inp.match(/^0x[0-9a-f]{1,4}$/i)) {
       inp = inp.replace(/^0x/, "");
@@ -2195,6 +2194,7 @@ function reset() {
   defaultCodePC = regPC = 0x600;
   regSP = 0x100;
   regP = 0x20;
+  labels.reset();
   runForever = false;
 }
 
@@ -2206,6 +2206,115 @@ function reset() {
 
 function message(text) {
   $('#messages').append(text + '<br>').scrollTop(10000);
+}
+
+
+function Labels() {
+  var labelIndex = [];
+  var labelPtr = 0;
+
+  function index(input) {
+
+    // remove comments
+
+    input = input.replace(/^(.*?);.*/, "$1");
+
+    // trim line
+
+    input = input.replace(/^\s+/, "");
+    input = input.replace(/\s+$/, "");
+
+    // Figure out how many bytes this instuction takes
+
+    thisPC = defaultCodePC;
+
+    codeLen = 0;
+    //  defaultCodePC = 0x600;
+    compileLine(input);
+    regPC += codeLen;
+
+    // Find command or label
+
+    if (input.match(/^\w+:/)) {
+      label = input.replace(/(^\w+):.*$/, "$1");
+      return push(label + "|" + thisPC);
+    }
+    return true;
+  }
+
+  /*
+  *  push() - Push label to array. Return false if label already exists.
+  */
+
+  function push(name) {
+    if (find(name)) {
+      return false;
+    }
+    labelIndex[labelPtr++] = name + "|";
+    return true;
+  }
+
+  /*
+  *  find() - Returns true if label exists.
+  */
+
+  function find(name) {
+    for (m=0; m<labelIndex.length; m++) {
+      nameAndAddr = labelIndex[m].split("|");
+      if (name == nameAndAddr[0]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /*
+  *  setPC() - Associates label with address
+  */
+
+  function setPC(name, addr) {
+    for (i=0; i<labelIndex.length; i++) {
+      nameAndAddr = labelIndex[i].split("|");
+      if (name == nameAndAddr[0]) {
+        labelIndex[i] = name + "|" + addr;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /*
+  *  getPC() - Get address associated with label
+  */
+
+  function getPC(name) {
+    for (i=0; i<labelIndex.length; i++) {
+      nameAndAddr = labelIndex[i].split("|");
+      if (name == nameAndAddr[0]) {
+        return (nameAndAddr[1]);
+      }
+    }
+    return -1;
+  }
+
+  function displayMessage() {
+    str = "Found " + labelIndex.length + " label";
+    if (labelIndex.length != 1) {
+      str += "s";
+    }
+    message(str + ".");
+  }
+
+  function reset() {
+    labelIndex = [];
+    labelPtr = 0;
+  }
+
+  this.index = index;
+  this.find = find;
+  this.getPC = getPC;
+  this.displayMessage = displayMessage;
+  this.reset = reset;
 }
 
 /*
@@ -2223,25 +2332,19 @@ function compileCode() {
   code += "\n\n";
   lines = code.split("\n");
   codeCompiledOK = true;
-  labelIndex = [];
-  labelPtr = 0;
 
   message("Indexing labels..");
 
   defaultCodePC = regPC = 0x600;
 
   for (xc=0; xc<lines.length; xc++) {
-    if (! indexLabels(lines[xc])) {
+    if (! labels.index(lines[xc])) {
       message("<b>Label already defined at line "+(xc+1)+":</b> "+lines[xc]);
       return false;
     }
   }
 
-  str = "Found " + labelIndex.length + " label";
-  if (labelIndex.length != 1) {
-    str += "s";
-  }
-  message(str + ".");
+  labels.displayMessage();
 
   defaultCodePC = regPC = 0x600;
   message("Compiling code..");
@@ -2275,99 +2378,6 @@ function compileCode() {
 
   updateDisplayFull();
   message("Code compiled successfully, " + codeLen + " bytes.");
-}
-
-/*
-*  indexLabels() - Pushes all labels to array.
-*
-*/
-
-function indexLabels(input) {
-
-  // remove comments
-
-  input = input.replace(/^(.*?);.*/, "$1");
-
-  // trim line
-
-  input = input.replace(/^\s+/, "");
-  input = input.replace(/\s+$/, "");
-
-  // Figure out how many bytes this instuction takes
-
-  thisPC = defaultCodePC;
-
-  codeLen = 0;
-  //  defaultCodePC = 0x600;
-  compileLine(input);
-  regPC += codeLen;
-
-  // Find command or label
-
-  if (input.match(/^\w+:/)) {
-    label = input.replace(/(^\w+):.*$/, "$1");
-    return pushLabel(label + "|" + thisPC);
-  }
-  return true;
-}
-
-/*
-*  pushLabel() - Push label to array. Return false if label already exists.
-*
-*/
-
-function pushLabel(name) {
-  if (findLabel(name)) {
-    return false;
-  }
-  labelIndex[labelPtr++] = name + "|";
-  return true;
-}
-
-/*
-*  findLabel() - Returns true if label exists.
-*
-*/
-
-function findLabel(name) {
-  for (m=0; m<labelIndex.length; m++) {
-    nameAndAddr = labelIndex[m].split("|");
-    if (name == nameAndAddr[0]) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/*
-*  setLabelPC() - Associates label with address
-*
-*/
-
-function setLabelPC(name, addr) {
-  for (i=0; i<labelIndex.length; i++) {
-    nameAndAddr = labelIndex[i].split("|");
-    if (name == nameAndAddr[0]) {
-      labelIndex[i] = name + "|" + addr;
-      return true;
-    }
-  }
-  return false;
-}
-
-/*
-*  getLabelPC() - Get address associated with label
-*
-*/
-
-function getLabelPC(name) {
-  for (i=0; i<labelIndex.length; i++) {
-    nameAndAddr = labelIndex[i].split("|");
-    if (name == nameAndAddr[0]) {
-      return (nameAndAddr[1]);
-    }
-  }
-  return -1;
 }
 
 /*
@@ -2493,7 +2503,7 @@ function checkBranch(param, opcode) {
 
   addr = -1;
   if (param.match(/\w+/)) {
-    addr = getLabelPC(param);
+    addr = labels.getPC(param);
   }
   if (addr == -1) { pushWord(0x00); return false; }
   pushByte(opcode);
@@ -2531,8 +2541,8 @@ function checkImmediate(param, opcode) {
     label = param.replace(/^#[<>](\w+)$/, "$1");
     hilo = param.replace(/^#([<>]).*$/, "$1");
     pushByte(opcode);
-    if (findLabel(label)) {
-      addr = getLabelPC(label);
+    if (labels.find(label)) {
+      addr = labels.getPC(label);
       switch(hilo) {
       case ">":
         pushByte((addr >> 8) & 0xff);
@@ -2643,8 +2653,8 @@ function checkAbsoluteX(param, opcode) {
   if (param.match(/^\w+,X$/i)) {
     param = param.replace(/,X$/i, "");
     pushByte(opcode);
-    if (findLabel(param)) {
-      addr = getLabelPC(param);
+    if (labels.find(param)) {
+      addr = labels.getPC(param);
       if (addr < 0 || addr > 0xffff) { return false; }
       pushWord(addr);
       return true;
@@ -2678,8 +2688,8 @@ function checkAbsoluteY(param, opcode) {
   if (param.match(/^\w+,Y$/i)) {
     param = param.replace(/,Y$/i, "");
     pushByte(opcode);
-    if (findLabel(param)) {
-      addr = getLabelPC(param);
+    if (labels.find(param)) {
+      addr = labels.getPC(param);
       if (addr < 0 || addr > 0xffff) { return false; }
       pushWord(addr);
       return true;
@@ -2760,8 +2770,8 @@ function checkAbsolute(param, opcode) {
   }
   // it could be a label too..
   if (param.match(/^\w+$/)) {
-    if (findLabel(param)) {
-      addr = (getLabelPC(param));
+    if (labels.find(param)) {
+      addr = (labels.getPC(param));
       if (addr < 0 || addr > 0xffff) { return false; }
       pushWord(addr);
       return true;
