@@ -21,6 +21,7 @@ var memory = new Array(0x600);
 var runForever = false;
 var labels = new Labels();
 var compiler = new Compiler();
+// var emulator = new Emulator();
 var codeRunning = false;
 var xmlhttp;
 var myInterval;
@@ -1688,7 +1689,7 @@ var instructions = {
   },
 
   ierr: function () {
-    message("Address $" + addr2hex(regPC) + " - unknown opcode " + opcode);
+    message("Address $" + addr2hex(regPC) + " - unknown opcode");
     codeRunning = false;
   }
 }
@@ -2123,8 +2124,12 @@ function enableDebugger() {
   }
 }
 
-function toggleDebug() {
-  debug = !debug;
+function toggleDebug(e) {
+  if (e) {
+    debug = $(this).is(':checked');
+  } else {
+    debug = !debug;
+  }
   if (debug) {
     enableDebugger();
   } else {
@@ -2194,8 +2199,8 @@ function reset() {
   regPC = 0x600;
   regSP = 0x100;
   regP = 0x20;
-  labels.reset();
   runForever = false;
+  $('#watch').attr('checked', false);
 }
 
 
@@ -2335,6 +2340,7 @@ function Compiler() {
 
   function compileCode() {
     reset();
+    labels.reset();
     defaultCodePC = 0x600;
     $('#messages').empty();
 
@@ -3132,7 +3138,7 @@ $(document).ready(function () {
   $('#runButton').click(runBinary);
   $('#resetButton').click(reset);
   $('#hexdumpButton').click(compiler.hexdump);
-  $('#watch').click(toggleDebug);
+  $('#watch').change(toggleDebug);
   $('#stepButton').click(debugExec);
   $('#gotoButton').click(gotoAddr);
   $('#code').keypress(disableButtons);
