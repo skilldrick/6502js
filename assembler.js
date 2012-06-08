@@ -2090,10 +2090,10 @@ function gotoAddr() {
   if (findLabel(inp)) {
     addr = getLabelPC(inp);
   } else {
-    if (inp.match(new RegExp(/^0x[0-9a-f]{1,4}$/i))) {
+    if (inp.match(/^0x[0-9a-f]{1,4}$/i)) {
       inp = inp.replace(/^0x/, "");
       addr = parseInt(inp, 16);
-    } else if (inp.match(new RegExp(/^\$[0-9a-f]{1,4}$/i))) {
+    } else if (inp.match(/^\$[0-9a-f]{1,4}$/i)) {
       inp = inp.replace(/^\$/, "");
       addr = parseInt(inp, 16);
     }
@@ -2286,12 +2286,12 @@ function indexLabels(input) {
 
   // remove comments
 
-  input = input.replace(new RegExp(/^(.*?);.*/), "$1");
+  input = input.replace(/^(.*?);.*/, "$1");
 
   // trim line
 
-  input = input.replace(new RegExp(/^\s+/), "");
-  input = input.replace(new RegExp(/\s+$/), "");
+  input = input.replace(/^\s+/, "");
+  input = input.replace(/\s+$/, "");
 
   // Figure out how many bytes this instuction takes
 
@@ -2304,8 +2304,8 @@ function indexLabels(input) {
 
   // Find command or label
 
-  if (input.match(new RegExp(/^\w+:/))) {
-    label = input.replace(new RegExp(/(^\w+):.*$/), "$1");
+  if (input.match(/^\w+:/)) {
+    label = input.replace(/(^\w+):.*$/, "$1");
     return pushLabel(label + "|" + thisPC);
   }
   return true;
@@ -2381,25 +2381,25 @@ function compileLine(input, lineno) {
 
   // remove comments
 
-  input = input.replace(new RegExp(/^(.*?);.*/), "$1");
+  input = input.replace(/^(.*?);.*/, "$1");
 
   // trim line
 
-  input = input.replace(new RegExp(/^\s+/), "");
-  input = input.replace(new RegExp(/\s+$/), "");
+  input = input.replace(/^\s+/, "");
+  input = input.replace(/\s+$/, "");
 
   // Find command or label
 
-  if (input.match(new RegExp(/^\w+:/))) {
-    label = input.replace(new RegExp(/(^\w+):.*$/), "$1");
-    if (input.match(new RegExp(/^\w+:[\s]*\w+.*$/))) {
-      input = input.replace(new RegExp(/^\w+:[\s]*(.*)$/), "$1");
-      command = input.replace(new RegExp(/^(\w+).*$/), "$1");
+  if (input.match(/^\w+:/)) {
+    label = input.replace(/(^\w+):.*$/, "$1");
+    if (input.match(/^\w+:[\s]*\w+.*$/)) {
+      input = input.replace(/^\w+:[\s]*(.*)$/, "$1");
+      command = input.replace(/^(\w+).*$/, "$1");
     } else {
       command = "";
     }
   } else {
-    command = input.replace(new RegExp(/^(\w+).*$/), "$1");
+    command = input.replace(/^(\w+).*$/, "$1");
   }
 
   // Blank line?  Return.
@@ -2412,9 +2412,9 @@ function compileLine(input, lineno) {
 
   if (input.match(/^\*[\s]*=[\s]*[\$]?[0-9a-f]*$/)) {
     // equ spotted
-    param = input.replace(new RegExp(/^[\s]*\*[\s]*=[\s]*/), "");
+    param = input.replace(/^[\s]*\*[\s]*=[\s]*/, "");
     if (param[0] == "$") {
-      param = param.replace(new RegExp(/^\$/), "");
+      param = param.replace(/^\$/, "");
       addr = parseInt(param, 16);
     } else {
       addr = parseInt(param, 10);
@@ -2428,7 +2428,7 @@ function compileLine(input, lineno) {
   }
 
   if (input.match(/^\w+\s+.*?$/)) {
-    param = input.replace(new RegExp(/^\w+\s+(.*?)/), "$1");
+    param = input.replace(/^\w+\s+(.*?)/, "$1");
   } else {
     if (input.match(/^\w+$/)) {
       param = "";
@@ -2512,14 +2512,14 @@ function checkBranch(param, opcode) {
 
 function checkImmediate(param, opcode) {
   if (opcode == null) { return false; }
-  if (param.match(new RegExp(/^#\$[0-9a-f]{1,2}$/i))) {
+  if (param.match(/^#\$[0-9a-f]{1,2}$/i)) {
     pushByte(opcode);
     value = parseInt(param.replace(/^#\$/, ""), 16);
     if (value < 0 || value > 255) { return false; }
     pushByte(value);
     return true;
   }
-  if (param.match(new RegExp(/^#[0-9]{1,3}$/i))) {
+  if (param.match(/^#[0-9]{1,3}$/i)) {
     pushByte(opcode);
     value = parseInt(param.replace(/^#/, ""), 10);
     if (value < 0 || value > 255) { return false; }
@@ -2527,9 +2527,9 @@ function checkImmediate(param, opcode) {
     return true;
   }
   // Label lo/hi
-  if (param.match(new RegExp(/^#[<>]\w+$/))) {
-    label = param.replace(new RegExp(/^#[<>](\w+)$/), "$1");
-    hilo = param.replace(new RegExp(/^#([<>]).*$/), "$1");
+  if (param.match(/^#[<>]\w+$/)) {
+    label = param.replace(/^#[<>](\w+)$/, "$1");
+    hilo = param.replace(/^#([<>]).*$/, "$1");
     pushByte(opcode);
     if (findLabel(label)) {
       addr = getLabelPC(label);
@@ -2563,7 +2563,7 @@ function checkIndirectX(param, opcode) {
   if (opcode == null) { return false; }
   if (param.match(/^\(\$[0-9a-f]{1,2},X\)$/i)) {
     pushByte(opcode);
-    value = param.replace(new RegExp(/^\(\$([0-9a-f]{1,2}).*$/i), "$1");
+    value = param.replace(/^\(\$([0-9a-f]{1,2}).*$/i, "$1");
     if (value < 0 || value > 255) { return false; }
     pushByte(parseInt(value, 16));
     return true;
@@ -2580,7 +2580,7 @@ function checkIndirectY(param, opcode) {
   if (opcode == null) { return false; }
   if (param.match(/^\(\$[0-9a-f]{1,2}\),Y$/i)) {
     pushByte(opcode);
-    value = param.replace(new RegExp(/^\([\$]([0-9a-f]{1,2}).*$/i), "$1");
+    value = param.replace(/^\([\$]([0-9a-f]{1,2}).*$/i, "$1");
     if (value < 0 || value > 255) { return false; }
     pushByte(parseInt(value, 16));
     return true;
@@ -2633,7 +2633,7 @@ function checkAbsoluteX(param, opcode) {
   if (opcode == null) { return false; }
   if (param.match(/^\$[0-9a-f]{3,4},X$/i)) {
     pushByte(opcode);
-    number = param.replace(new RegExp(/^\$([0-9a-f]*),X/i), "$1");
+    number = param.replace(/^\$([0-9a-f]*),X/i, "$1");
     value = parseInt(number, 16);
     if (value < 0 || value > 0xffff) { return false; }
     pushWord(value);
@@ -2641,7 +2641,7 @@ function checkAbsoluteX(param, opcode) {
   }
 
   if (param.match(/^\w+,X$/i)) {
-    param = param.replace(new RegExp(/,X$/i), "");
+    param = param.replace(/,X$/i, "");
     pushByte(opcode);
     if (findLabel(param)) {
       addr = getLabelPC(param);
@@ -2666,7 +2666,7 @@ function checkAbsoluteY(param, opcode) {
   if (opcode == null) { return false; }
   if (param.match(/^\$[0-9a-f]{3,4},Y$/i)) {
     pushByte(opcode);
-    number = param.replace(new RegExp(/^\$([0-9a-f]*),Y/i), "$1");
+    number = param.replace(/^\$([0-9a-f]*),Y/i, "$1");
     value = parseInt(number, 16);
     if (value < 0 || value > 0xffff) { return false; }
     pushWord(value);
@@ -2676,7 +2676,7 @@ function checkAbsoluteY(param, opcode) {
   // it could be a label too..
 
   if (param.match(/^\w+,Y$/i)) {
-    param = param.replace(new RegExp(/,Y$/i), "");
+    param = param.replace(/,Y$/i, "");
     pushByte(opcode);
     if (findLabel(param)) {
       addr = getLabelPC(param);
@@ -2700,7 +2700,7 @@ function checkZeroPageX(param, opcode) {
   if (opcode == null) { return false; }
   if (param.match(/^\$[0-9a-f]{1,2},X/i)) {
     pushByte(opcode);
-    number = param.replace(new RegExp(/^\$([0-9a-f]{1,2}),X/i), "$1");
+    number = param.replace(/^\$([0-9a-f]{1,2}),X/i, "$1");
     value = parseInt(number, 16);
     if (value < 0 || value > 255) { return false; }
     pushByte(value);
@@ -2708,7 +2708,7 @@ function checkZeroPageX(param, opcode) {
   }
   if (param.match(/^[0-9]{1,3},X/i)) {
     pushByte(opcode);
-    number = param.replace(new RegExp(/^([0-9]{1,3}),X/i), "$1");
+    number = param.replace(/^([0-9]{1,3}),X/i, "$1");
     value = parseInt(number, 10);
     if (value < 0 || value > 255) { return false; }
     pushByte(value);
@@ -2721,7 +2721,7 @@ function checkZeroPageY(param, opcode) {
   if (opcode == null) { return false; }
   if (param.match(/^\$[0-9a-f]{1,2},Y/i)) {
     pushByte(opcode);
-    number = param.replace(new RegExp(/^\$([0-9a-f]{1,2}),Y/i), "$1");
+    number = param.replace(/^\$([0-9a-f]{1,2}),Y/i, "$1");
     value = parseInt(number, 16);
     if (value < 0 || value > 255) { return false; }
     pushByte(value);
@@ -2729,7 +2729,7 @@ function checkZeroPageY(param, opcode) {
   }
   if (param.match(/^[0-9]{1,3},Y/i)) {
     pushByte(opcode);
-    number = param.replace(new RegExp(/^([0-9]{1,3}),Y/i), "$1");
+    number = param.replace(/^([0-9]{1,3}),Y/i, "$1");
     value = parseInt(number, 10);
     if (value < 0 || value > 255) { return false; }
     pushByte(value);
