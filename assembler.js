@@ -20,12 +20,11 @@ var regSP = 0x100;
 var memory = new Array(0x600);
 var runForever = false;
 var labels = new Labels();
-var codeLen;
+var compiler = new Compiler();
 var codeRunning = false;
 var xmlhttp;
 var myInterval;
 var display = new Array(0x400);
-var defaultCodePC = 0x600;
 var debug = false;
 var palette = [
   "#000000", "#ffffff", "#880000", "#aaffee",
@@ -2192,7 +2191,7 @@ function reset() {
     memory[x] = 0x00;
   }
   regA = regX = regY = 0;
-  defaultCodePC = regPC = 0x600;
+  regPC = 0x600;
   regSP = 0x100;
   regP = 0x20;
   labels.reset();
@@ -2238,8 +2237,8 @@ function Labels() {
     input = input.replace(/\s+$/, "");
 
     // Figure out how many bytes this instruction takes
-    var currentPC = defaultCodePC;
-    compileLine(input);
+    var currentPC = compiler.getCurrentPC();
+    compiler.compileLine(input); //TODO: find a better way for Labels to have access to compiler
 
     // Find command or label
     if (input.match(/^\w+:/)) {
@@ -2330,462 +2329,529 @@ function Labels() {
 *
 */
 
-function compileCode() {
-  reset();
-  $('#messages').empty();
+function Compiler() {
+  var defaultCodePC;
+  var codeLen;
 
-  var code = $('#code').val();
-  code += "\n\n";
-  lines = code.split("\n");
-  codeCompiledOK = true;
+  function compileCode() {
+    reset();
+    defaultCodePC = 0x600;
+    $('#messages').empty();
 
-  message("Indexing labels..");
+    var code = $('#code').val();
+    code += "\n\n";
+    lines = code.split("\n");
+    codeCompiledOK = true;
 
-  defaultCodePC = 0x600;
+    message("Indexing labels..");
 
-  if (!labels.indexLines(lines)) {
-    return false;
-  }
+    defaultCodePC = 0x600;
 
-  labels.displayMessage();
+    if (!labels.indexLines(lines)) {
+      return false;
+    }
 
-  defaultCodePC = 0x600;
-  message("Compiling code..");
+    labels.displayMessage();
 
-  codeLen = 0;
-  for (var i = 0; i < lines.length; i++) {
-    if (! compileLine(lines[i], i)) {
+    defaultCodePC = 0x600;
+    message("Compiling code..");
+
+    codeLen = 0;
+    for (var i = 0; i < lines.length; i++) {
+      if (! compileLine(lines[i], i)) {
+        codeCompiledOK = false;
+        break;
+      }
+    }
+
+    if (codeLen == 0) {
       codeCompiledOK = false;
-      break;
+      message("No code to run.");
     }
+
+    if (codeCompiledOK) {
+      $('#runButton').attr('disabled', false);
+      $('#hexdumpButton').attr('disabled', false);
+      $('#compileButton').attr('disabled', true);
+      $('#fileSelect').attr('disabled', false);
+      memory[defaultCodePC] = 0x00; //set a null byte at the end of the code
+    } else {
+      str = lines[x].replace("<", "&lt;").replace(">", "&gt;");
+      message("<b>Syntax error line " + (x+1) + ": " + str + "</b>");
+      $('#runButton').attr('disabled', true);
+      $('#compileButton').attr('disabled', false);
+      $('#fileSelect').attr('disabled', false);
+      return;
+    }
+
+    updateDisplayFull();
+    message("Code compiled successfully, " + codeLen + " bytes.");
   }
 
-  if (codeLen == 0) {
-    codeCompiledOK = false;
-    message("No code to run.");
-  }
+  /*
+  *  compileLine()
+  *
+  *  Compiles one line of code.  Returns true if it compiled successfully,
+  *  false otherwise.
+  */
 
-  if (codeCompiledOK) {
-    $('#runButton').attr('disabled', false);
-    $('#hexdumpButton').attr('disabled', false);
-    $('#compileButton').attr('disabled', true);
-    $('#fileSelect').attr('disabled', false);
-    memory[defaultCodePC] = 0x00; //set a null byte at the end of the code
-  } else {
-    str = lines[x].replace("<", "&lt;").replace(">", "&gt;");
-    message("<b>Syntax error line " + (x+1) + ": " + str + "</b>");
-    $('#runButton').attr('disabled', true);
-    $('#compileButton').attr('disabled', false);
-    $('#fileSelect').attr('disabled', false);
-    return;
-  }
+  function compileLine(input, lineno) {
 
-  updateDisplayFull();
-  message("Code compiled successfully, " + codeLen + " bytes.");
-}
+    // remove comments
 
-/*
-*  compileLine()
-*
-*  Compiles one line of code.  Returns true if it compiled successfully,
-*  false otherwise.
-*/
+    input = input.replace(/^(.*?);.*/, "$1");
 
-function compileLine(input, lineno) {
+    // trim line
 
-  // remove comments
+    input = input.replace(/^\s+/, "");
+    input = input.replace(/\s+$/, "");
 
-  input = input.replace(/^(.*?);.*/, "$1");
+    // Find command or label
 
-  // trim line
-
-  input = input.replace(/^\s+/, "");
-  input = input.replace(/\s+$/, "");
-
-  // Find command or label
-
-  if (input.match(/^\w+:/)) {
-    label = input.replace(/(^\w+):.*$/, "$1");
-    if (input.match(/^\w+:[\s]*\w+.*$/)) {
-      input = input.replace(/^\w+:[\s]*(.*)$/, "$1");
+    if (input.match(/^\w+:/)) {
+      label = input.replace(/(^\w+):.*$/, "$1");
+      if (input.match(/^\w+:[\s]*\w+.*$/)) {
+        input = input.replace(/^\w+:[\s]*(.*)$/, "$1");
+        command = input.replace(/^(\w+).*$/, "$1");
+      } else {
+        command = "";
+      }
+    } else {
       command = input.replace(/^(\w+).*$/, "$1");
+    }
+
+    // Blank line?  Return.
+
+    if (command == "") {
+      return true;
+    }
+
+    command = command.toUpperCase();
+
+    if (input.match(/^\*[\s]*=[\s]*[\$]?[0-9a-f]*$/)) {
+      // equ spotted
+      param = input.replace(/^[\s]*\*[\s]*=[\s]*/, "");
+      if (param[0] == "$") {
+        param = param.replace(/^\$/, "");
+        addr = parseInt(param, 16);
+      } else {
+        addr = parseInt(param, 10);
+      }
+      if ((addr < 0) || (addr > 0xffff)) {
+        message("Unable to relocate code outside 64k memory");
+        return false;
+      }
+      defaultCodePC = addr;
+      return true;
+    }
+
+    if (input.match(/^\w+\s+.*?$/)) {
+      param = input.replace(/^\w+\s+(.*?)/, "$1");
     } else {
-      command = "";
-    }
-  } else {
-    command = input.replace(/^(\w+).*$/, "$1");
-  }
-
-  // Blank line?  Return.
-
-  if (command == "") {
-    return true;
-  }
-
-  command = command.toUpperCase();
-
-  if (input.match(/^\*[\s]*=[\s]*[\$]?[0-9a-f]*$/)) {
-    // equ spotted
-    param = input.replace(/^[\s]*\*[\s]*=[\s]*/, "");
-    if (param[0] == "$") {
-      param = param.replace(/^\$/, "");
-      addr = parseInt(param, 16);
-    } else {
-      addr = parseInt(param, 10);
-    }
-    if ((addr < 0) || (addr > 0xffff)) {
-      message("Unable to relocate code outside 64k memory");
-      return false;
-    }
-    defaultCodePC = addr;
-    return true;
-  }
-
-  if (input.match(/^\w+\s+.*?$/)) {
-    param = input.replace(/^\w+\s+(.*?)/, "$1");
-  } else {
-    if (input.match(/^\w+$/)) {
-      param = "";
-    } else {
-      return false;
-    }
-  }
-
-  param = param.replace(/[ ]/g, "");
-
-  if (command == "DCB") {
-    return DCB(param);
-  }
-
-
-  for (o=0; o<Opcodes.length; o++) {
-    if (Opcodes[o][0] == command) {
-      if (checkSingle(param, Opcodes[o][10])) { return true; }
-      if (checkImmediate(param, Opcodes[o][1])) { return true; }
-      if (checkZeroPage(param, Opcodes[o][2])) { return true; }
-      if (checkZeroPageX(param, Opcodes[o][3])) { return true; }
-      if (checkZeroPageY(param, Opcodes[o][4])) { return true; }
-      if (checkAbsoluteX(param, Opcodes[o][6])) { return true; }
-      if (checkAbsoluteY(param, Opcodes[o][7])) { return true; }
-      if (checkIndirectX(param, Opcodes[o][8])) { return true; }
-      if (checkIndirectY(param, Opcodes[o][9])) { return true; }
-      if (checkAbsolute(param, Opcodes[o][5])) { return true; }
-      if (checkBranch(param, Opcodes[o][11])) { return true; }
-    }
-  }
-  return false; // Unknown opcode
-}
-
-function DCB(param) {
-  values = param.split(",");
-  if (values.length == 0) { return false; }
-  for (v=0; v<values.length; v++) {
-    str = values[v];
-    if (str != undefined && str != null && str.length > 0) {
-      ch = str.substring(0, 1);
-      if (ch == "$") {
-        number = parseInt(str.replace(/^\$/, ""), 16);
-        pushByte(number);
-      } else if (ch >= "0" && ch <= "9") {
-        number = parseInt(str, 10);
-        pushByte(number);
+      if (input.match(/^\w+$/)) {
+        param = "";
       } else {
         return false;
       }
     }
-  }
-  return true;
-}
 
-/*
-*  checkBranch() - Commom branch function for all branches (BCC, BCS, BEQ, BNE..)
-*
-*/
+    param = param.replace(/[ ]/g, "");
 
-function checkBranch(param, opcode) {
-  if (opcode == null) { return false; }
+    if (command == "DCB") {
+      return DCB(param);
+    }
 
-  addr = -1;
-  if (param.match(/\w+/)) {
-    addr = labels.getPC(param);
-  }
-  if (addr == -1) { pushWord(0x00); return false; }
-  pushByte(opcode);
-  if (addr < (defaultCodePC-0x600)) {  // Backwards?
-    pushByte((0xff - ((defaultCodePC-0x600)-addr)) & 0xff);
-    return true;
-  }
-  pushByte((addr-(defaultCodePC-0x600)-1) & 0xff);
-  return true;
-}
 
-/*
-* checkImmediate() - Check if param is immediate and push value
-*
-*/
-
-function checkImmediate(param, opcode) {
-  if (opcode == null) { return false; }
-  if (param.match(/^#\$[0-9a-f]{1,2}$/i)) {
-    pushByte(opcode);
-    value = parseInt(param.replace(/^#\$/, ""), 16);
-    if (value < 0 || value > 255) { return false; }
-    pushByte(value);
-    return true;
-  }
-  if (param.match(/^#[0-9]{1,3}$/i)) {
-    pushByte(opcode);
-    value = parseInt(param.replace(/^#/, ""), 10);
-    if (value < 0 || value > 255) { return false; }
-    pushByte(value);
-    return true;
-  }
-  // Label lo/hi
-  if (param.match(/^#[<>]\w+$/)) {
-    label = param.replace(/^#[<>](\w+)$/, "$1");
-    hilo = param.replace(/^#([<>]).*$/, "$1");
-    pushByte(opcode);
-    if (labels.find(label)) {
-      addr = labels.getPC(label);
-      switch(hilo) {
-      case ">":
-        pushByte((addr >> 8) & 0xff);
-        return true;
-        break;
-      case "<":
-        pushByte(addr & 0xff);
-        return true;
-        break;
-      default:
-        return false;
-        break;
+    for (o=0; o<Opcodes.length; o++) {
+      if (Opcodes[o][0] == command) {
+        if (checkSingle(param, Opcodes[o][10])) { return true; }
+        if (checkImmediate(param, Opcodes[o][1])) { return true; }
+        if (checkZeroPage(param, Opcodes[o][2])) { return true; }
+        if (checkZeroPageX(param, Opcodes[o][3])) { return true; }
+        if (checkZeroPageY(param, Opcodes[o][4])) { return true; }
+        if (checkAbsoluteX(param, Opcodes[o][6])) { return true; }
+        if (checkAbsoluteY(param, Opcodes[o][7])) { return true; }
+        if (checkIndirectX(param, Opcodes[o][8])) { return true; }
+        if (checkIndirectY(param, Opcodes[o][9])) { return true; }
+        if (checkAbsolute(param, Opcodes[o][5])) { return true; }
+        if (checkBranch(param, Opcodes[o][11])) { return true; }
       }
-    } else {
-      pushByte(0x00);
-      return true;
     }
+    return false; // Unknown opcode
   }
-  return false;
-}
 
-/*
-* checkIndirectX() - Check if param is indirect X and push value
-*
-*/
-
-function checkIndirectX(param, opcode) {
-  if (opcode == null) { return false; }
-  if (param.match(/^\(\$[0-9a-f]{1,2},X\)$/i)) {
-    pushByte(opcode);
-    value = param.replace(/^\(\$([0-9a-f]{1,2}).*$/i, "$1");
-    if (value < 0 || value > 255) { return false; }
-    pushByte(parseInt(value, 16));
-    return true;
-  }
-  return false;
-}
-
-/*
-* checkIndirectY() - Check if param is indirect Y and push value
-*
-*/
-
-function checkIndirectY(param, opcode) {
-  if (opcode == null) { return false; }
-  if (param.match(/^\(\$[0-9a-f]{1,2}\),Y$/i)) {
-    pushByte(opcode);
-    value = param.replace(/^\([\$]([0-9a-f]{1,2}).*$/i, "$1");
-    if (value < 0 || value > 255) { return false; }
-    pushByte(parseInt(value, 16));
-    return true;
-  }
-  return false;
-}
-
-/*
-*  checkSingle() - Single-byte opcodes
-*
-*/
-
-function checkSingle(param, opcode) {
-  if (opcode === null) { return false; }
-  if (param != "") { return false; }
-  pushByte(opcode);
-  return true;
-}
-
-/*
-*  checkZeroPage() - Check if param is ZP and push value
-*
-*/
-
-function checkZeroPage(param, opcode) {
-  if (opcode == null) { return false; }
-  if (param.match(/^\$[0-9a-f]{1,2}$/i)) {
-    pushByte(opcode);
-    value = parseInt(param.replace(/^\$/, ""), 16);
-    if (value < 0 || value > 255) { return false; }
-    pushByte(value);
-    return true;
-  }
-  if (param.match(/^[0-9]{1,3}$/i)) {
-    pushByte(opcode);
-    value = parseInt(param, 10);
-    if (value < 0 || value > 255) { return false; }
-    pushByte(value);
-    return true;
-  }
-  return false;
-}
-
-/*
-*  checkAbsoluteX() - Check if param is ABSX and push value
-*
-*/
-
-function checkAbsoluteX(param, opcode) {
-  if (opcode == null) { return false; }
-  if (param.match(/^\$[0-9a-f]{3,4},X$/i)) {
-    pushByte(opcode);
-    number = param.replace(/^\$([0-9a-f]*),X/i, "$1");
-    value = parseInt(number, 16);
-    if (value < 0 || value > 0xffff) { return false; }
-    pushWord(value);
+  function DCB(param) {
+    values = param.split(",");
+    if (values.length == 0) { return false; }
+    for (v=0; v<values.length; v++) {
+      str = values[v];
+      if (str != undefined && str != null && str.length > 0) {
+        ch = str.substring(0, 1);
+        if (ch == "$") {
+          number = parseInt(str.replace(/^\$/, ""), 16);
+          pushByte(number);
+        } else if (ch >= "0" && ch <= "9") {
+          number = parseInt(str, 10);
+          pushByte(number);
+        } else {
+          return false;
+        }
+      }
+    }
     return true;
   }
 
-  if (param.match(/^\w+,X$/i)) {
-    param = param.replace(/,X$/i, "");
-    pushByte(opcode);
-    if (labels.find(param)) {
+  /*
+  *  checkBranch() - Commom branch function for all branches (BCC, BCS, BEQ, BNE..)
+  *
+  */
+
+  function checkBranch(param, opcode) {
+    if (opcode == null) { return false; }
+
+    addr = -1;
+    if (param.match(/\w+/)) {
       addr = labels.getPC(param);
-      if (addr < 0 || addr > 0xffff) { return false; }
-      pushWord(addr);
-      return true;
-    } else {
-      pushWord(0x1234);
+    }
+    if (addr == -1) { pushWord(0x00); return false; }
+    pushByte(opcode);
+    if (addr < (defaultCodePC-0x600)) {  // Backwards?
+      pushByte((0xff - ((defaultCodePC-0x600)-addr)) & 0xff);
       return true;
     }
-  }
-
-  return false;
-}
-
-/*
-*  checkAbsoluteY() - Check if param is ABSY and push value
-*
-*/
-
-function checkAbsoluteY(param, opcode) {
-  if (opcode == null) { return false; }
-  if (param.match(/^\$[0-9a-f]{3,4},Y$/i)) {
-    pushByte(opcode);
-    number = param.replace(/^\$([0-9a-f]*),Y/i, "$1");
-    value = parseInt(number, 16);
-    if (value < 0 || value > 0xffff) { return false; }
-    pushWord(value);
+    pushByte((addr-(defaultCodePC-0x600)-1) & 0xff);
     return true;
   }
 
-  // it could be a label too..
+  /*
+  * checkImmediate() - Check if param is immediate and push value
+  *
+  */
 
-  if (param.match(/^\w+,Y$/i)) {
-    param = param.replace(/,Y$/i, "");
-    pushByte(opcode);
-    if (labels.find(param)) {
-      addr = labels.getPC(param);
-      if (addr < 0 || addr > 0xffff) { return false; }
-      pushWord(addr);
-      return true;
-    } else {
-      pushWord(0x1234);
+  function checkImmediate(param, opcode) {
+    if (opcode == null) { return false; }
+    if (param.match(/^#\$[0-9a-f]{1,2}$/i)) {
+      pushByte(opcode);
+      value = parseInt(param.replace(/^#\$/, ""), 16);
+      if (value < 0 || value > 255) { return false; }
+      pushByte(value);
       return true;
     }
-  }
-  return false;
-}
-
-/*
-*  checkZeroPageX() - Check if param is ZPX and push value
-*
-*/
-
-function checkZeroPageX(param, opcode) {
-  if (opcode == null) { return false; }
-  if (param.match(/^\$[0-9a-f]{1,2},X/i)) {
-    pushByte(opcode);
-    number = param.replace(/^\$([0-9a-f]{1,2}),X/i, "$1");
-    value = parseInt(number, 16);
-    if (value < 0 || value > 255) { return false; }
-    pushByte(value);
-    return true;
-  }
-  if (param.match(/^[0-9]{1,3},X/i)) {
-    pushByte(opcode);
-    number = param.replace(/^([0-9]{1,3}),X/i, "$1");
-    value = parseInt(number, 10);
-    if (value < 0 || value > 255) { return false; }
-    pushByte(value);
-    return true;
-  }
-  return false;
-}
-
-function checkZeroPageY(param, opcode) {
-  if (opcode == null) { return false; }
-  if (param.match(/^\$[0-9a-f]{1,2},Y/i)) {
-    pushByte(opcode);
-    number = param.replace(/^\$([0-9a-f]{1,2}),Y/i, "$1");
-    value = parseInt(number, 16);
-    if (value < 0 || value > 255) { return false; }
-    pushByte(value);
-    return true;
-  }
-  if (param.match(/^[0-9]{1,3},Y/i)) {
-    pushByte(opcode);
-    number = param.replace(/^([0-9]{1,3}),Y/i, "$1");
-    value = parseInt(number, 10);
-    if (value < 0 || value > 255) { return false; }
-    pushByte(value);
-    return true;
-  }
-  return false;
-}
-
-/*
-*  checkAbsolute() - Check if param is ABS and push value
-*
-*/
-
-function checkAbsolute(param, opcode) {
-  if (opcode == null) { return false; }
-  pushByte(opcode);
-  if (param.match(/^\$[0-9a-f]{3,4}$/i)) {
-    value = parseInt(param.replace(/^\$/, ""), 16);
-    if (value < 0 || value > 0xffff) { return false; }
-    pushWord(value);
-    return true;
-  }
-  if (param.match(/^[0-9]{1,5}$/i)) {  // Thanks, Matt!
-    value = parseInt(param, 10);
-    if (value < 0 || value > 65535) { return false; }
-    pushWord(value);
-    return(true);
-  }
-  // it could be a label too..
-  if (param.match(/^\w+$/)) {
-    if (labels.find(param)) {
-      addr = (labels.getPC(param));
-      if (addr < 0 || addr > 0xffff) { return false; }
-      pushWord(addr);
-      return true;
-    } else {
-      pushWord(0x1234);
+    if (param.match(/^#[0-9]{1,3}$/i)) {
+      pushByte(opcode);
+      value = parseInt(param.replace(/^#/, ""), 10);
+      if (value < 0 || value > 255) { return false; }
+      pushByte(value);
       return true;
     }
+    // Label lo/hi
+    if (param.match(/^#[<>]\w+$/)) {
+      label = param.replace(/^#[<>](\w+)$/, "$1");
+      hilo = param.replace(/^#([<>]).*$/, "$1");
+      pushByte(opcode);
+      if (labels.find(label)) {
+        addr = labels.getPC(label);
+        switch(hilo) {
+        case ">":
+          pushByte((addr >> 8) & 0xff);
+          return true;
+          break;
+        case "<":
+          pushByte(addr & 0xff);
+          return true;
+          break;
+        default:
+          return false;
+          break;
+        }
+      } else {
+        pushByte(0x00);
+        return true;
+      }
+    }
+    return false;
   }
-  return false;
+
+  /*
+  * checkIndirectX() - Check if param is indirect X and push value
+  *
+  */
+
+  function checkIndirectX(param, opcode) {
+    if (opcode == null) { return false; }
+    if (param.match(/^\(\$[0-9a-f]{1,2},X\)$/i)) {
+      pushByte(opcode);
+      value = param.replace(/^\(\$([0-9a-f]{1,2}).*$/i, "$1");
+      if (value < 0 || value > 255) { return false; }
+      pushByte(parseInt(value, 16));
+      return true;
+    }
+    return false;
+  }
+
+  /*
+  * checkIndirectY() - Check if param is indirect Y and push value
+  *
+  */
+
+  function checkIndirectY(param, opcode) {
+    if (opcode == null) { return false; }
+    if (param.match(/^\(\$[0-9a-f]{1,2}\),Y$/i)) {
+      pushByte(opcode);
+      value = param.replace(/^\([\$]([0-9a-f]{1,2}).*$/i, "$1");
+      if (value < 0 || value > 255) { return false; }
+      pushByte(parseInt(value, 16));
+      return true;
+    }
+    return false;
+  }
+
+  /*
+  *  checkSingle() - Single-byte opcodes
+  *
+  */
+
+  function checkSingle(param, opcode) {
+    if (opcode === null) { return false; }
+    if (param != "") { return false; }
+    pushByte(opcode);
+    return true;
+  }
+
+  /*
+  *  checkZeroPage() - Check if param is ZP and push value
+  *
+  */
+
+  function checkZeroPage(param, opcode) {
+    if (opcode == null) { return false; }
+    if (param.match(/^\$[0-9a-f]{1,2}$/i)) {
+      pushByte(opcode);
+      value = parseInt(param.replace(/^\$/, ""), 16);
+      if (value < 0 || value > 255) { return false; }
+      pushByte(value);
+      return true;
+    }
+    if (param.match(/^[0-9]{1,3}$/i)) {
+      pushByte(opcode);
+      value = parseInt(param, 10);
+      if (value < 0 || value > 255) { return false; }
+      pushByte(value);
+      return true;
+    }
+    return false;
+  }
+
+  /*
+  *  checkAbsoluteX() - Check if param is ABSX and push value
+  *
+  */
+
+  function checkAbsoluteX(param, opcode) {
+    if (opcode == null) { return false; }
+    if (param.match(/^\$[0-9a-f]{3,4},X$/i)) {
+      pushByte(opcode);
+      number = param.replace(/^\$([0-9a-f]*),X/i, "$1");
+      value = parseInt(number, 16);
+      if (value < 0 || value > 0xffff) { return false; }
+      pushWord(value);
+      return true;
+    }
+
+    if (param.match(/^\w+,X$/i)) {
+      param = param.replace(/,X$/i, "");
+      pushByte(opcode);
+      if (labels.find(param)) {
+        addr = labels.getPC(param);
+        if (addr < 0 || addr > 0xffff) { return false; }
+        pushWord(addr);
+        return true;
+      } else {
+        pushWord(0x1234);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /*
+  *  checkAbsoluteY() - Check if param is ABSY and push value
+  *
+  */
+
+  function checkAbsoluteY(param, opcode) {
+    if (opcode == null) { return false; }
+    if (param.match(/^\$[0-9a-f]{3,4},Y$/i)) {
+      pushByte(opcode);
+      number = param.replace(/^\$([0-9a-f]*),Y/i, "$1");
+      value = parseInt(number, 16);
+      if (value < 0 || value > 0xffff) { return false; }
+      pushWord(value);
+      return true;
+    }
+
+    // it could be a label too..
+
+    if (param.match(/^\w+,Y$/i)) {
+      param = param.replace(/,Y$/i, "");
+      pushByte(opcode);
+      if (labels.find(param)) {
+        addr = labels.getPC(param);
+        if (addr < 0 || addr > 0xffff) { return false; }
+        pushWord(addr);
+        return true;
+      } else {
+        pushWord(0x1234);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /*
+  *  checkZeroPageX() - Check if param is ZPX and push value
+  *
+  */
+
+  function checkZeroPageX(param, opcode) {
+    if (opcode == null) { return false; }
+    if (param.match(/^\$[0-9a-f]{1,2},X/i)) {
+      pushByte(opcode);
+      number = param.replace(/^\$([0-9a-f]{1,2}),X/i, "$1");
+      value = parseInt(number, 16);
+      if (value < 0 || value > 255) { return false; }
+      pushByte(value);
+      return true;
+    }
+    if (param.match(/^[0-9]{1,3},X/i)) {
+      pushByte(opcode);
+      number = param.replace(/^([0-9]{1,3}),X/i, "$1");
+      value = parseInt(number, 10);
+      if (value < 0 || value > 255) { return false; }
+      pushByte(value);
+      return true;
+    }
+    return false;
+  }
+
+  function checkZeroPageY(param, opcode) {
+    if (opcode == null) { return false; }
+    if (param.match(/^\$[0-9a-f]{1,2},Y/i)) {
+      pushByte(opcode);
+      number = param.replace(/^\$([0-9a-f]{1,2}),Y/i, "$1");
+      value = parseInt(number, 16);
+      if (value < 0 || value > 255) { return false; }
+      pushByte(value);
+      return true;
+    }
+    if (param.match(/^[0-9]{1,3},Y/i)) {
+      pushByte(opcode);
+      number = param.replace(/^([0-9]{1,3}),Y/i, "$1");
+      value = parseInt(number, 10);
+      if (value < 0 || value > 255) { return false; }
+      pushByte(value);
+      return true;
+    }
+    return false;
+  }
+
+  /*
+  *  checkAbsolute() - Check if param is ABS and push value
+  *
+  */
+
+  function checkAbsolute(param, opcode) {
+    if (opcode == null) { return false; }
+    pushByte(opcode);
+    if (param.match(/^\$[0-9a-f]{3,4}$/i)) {
+      value = parseInt(param.replace(/^\$/, ""), 16);
+      if (value < 0 || value > 0xffff) { return false; }
+      pushWord(value);
+      return true;
+    }
+    if (param.match(/^[0-9]{1,5}$/i)) {  // Thanks, Matt!
+      value = parseInt(param, 10);
+      if (value < 0 || value > 65535) { return false; }
+      pushWord(value);
+      return(true);
+    }
+    // it could be a label too..
+    if (param.match(/^\w+$/)) {
+      if (labels.find(param)) {
+        addr = (labels.getPC(param));
+        if (addr < 0 || addr > 0xffff) { return false; }
+        pushWord(addr);
+        return true;
+      } else {
+        pushWord(0x1234);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /*
+  * pushByte() - Push byte to memory
+  *
+  */
+
+  function pushByte(value) {
+    memory[defaultCodePC] = value & 0xff;
+    defaultCodePC++;
+    codeLen++;
+  }
+
+  /*
+  * pushWord() - Push a word using pushByte twice
+  *
+  */
+
+  function pushWord(value) {
+    pushByte(value & 0xff);
+    pushByte((value>>8) & 0xff);
+  }
+
+  /*
+  *  hexDump() - Dump binary as hex to new window
+  *
+  */
+
+  function hexdump() {
+    w = window.open('', 'hexdump', 'width=500,height=300,resizable=yes,scrollbars=yes,toolbar=no,location=no,menubar=no,status=no');
+
+    html = "<html><head>";
+    html += "<link href='style.css' rel='stylesheet' type='text/css' />";
+    html += "<title>hexdump</title></head><body>";
+    html += "<code>";
+    for (x=0; x<codeLen; x++) {
+      if ((x&15) == 0) {
+        html += "<br/> ";
+        n = (0x600+x);
+        html += num2hex(((n>>8)&0xff));
+        html += num2hex((n&0xff));
+        html += ": ";
+      }
+      html += num2hex(memory[0x600+x]);
+      if (x&1) { html += " "; }
+    }
+    if ((x&1)) { html += "-- [END]"; }
+    html += "</code></body></html>";
+    w.document.write(html);
+    w.document.close();
+  }
+
+  return {
+    compileLine: compileLine,
+    compileCode: compileCode,
+    getCurrentPC: function () {
+      return defaultCodePC;
+    },
+    hexdump: hexdump
+  };
 }
+
+
 
 function stackPush(value) {
   if (regSP >= 0) {
@@ -2807,27 +2873,6 @@ function stackPop() {
     codeRunning = false;
     return 0;
   }
-}
-
-/*
-* pushByte() - Push byte to memory
-*
-*/
-
-function pushByte(value) {
-  memory[defaultCodePC] = value & 0xff;
-  defaultCodePC++;
-  codeLen++;
-}
-
-/*
-* pushWord() - Push a word using pushByte twice
-*
-*/
-
-function pushWord(value) {
-  pushByte(value & 0xff);
-  pushByte((value>>8) & 0xff);
 }
 
 /*
@@ -2860,11 +2905,6 @@ function memStoreByte(addr, value) {
   }
 }
 
-/*
-*  hexDump() - Dump binary as hex to new window
-*
-*/
-
 function addr2hex(addr) {
   return num2hex((addr>>8)&0xff)+num2hex(addr&0xff);
 }
@@ -2874,30 +2914,6 @@ function num2hex(nr) {
   hi = ((nr&0xf0)>>4);
   lo = (nr&15);
   return str.substring(hi, hi+1 ) + str.substring(lo, lo+1);
-}
-
-function hexdump() {
-  w = window.open('', 'hexdump', 'width=500,height=300,resizable=yes,scrollbars=yes,toolbar=no,location=no,menubar=no,status=no');
-
-  html = "<html><head>";
-  html += "<link href='style.css' rel='stylesheet' type='text/css' />";
-  html += "<title>hexdump</title></head><body>";
-  html += "<code>";
-  for (x=0; x<codeLen; x++) {
-    if ((x&15) == 0) {
-      html += "<br/> ";
-      n = (0x600+x);
-      html += num2hex(((n>>8)&0xff));
-      html += num2hex((n&0xff));
-      html += ": ";
-    }
-    html += num2hex(memory[0x600+x]);
-    if (x&1) { html += " "; }
-  }
-  if ((x&1)) { html += "-- [END]"; }
-  html += "</code></body></html>";
-  w.document.write(html);
-  w.document.close();
 }
 
 /*
@@ -3110,10 +3126,12 @@ function updateDisplayFull() {
 }
 
 $(document).ready(function () {
-  $('#compileButton').click(compileCode);
+  $('#compileButton').click(function () {
+    compiler.compileCode();
+  });
   $('#runButton').click(runBinary);
   $('#resetButton').click(reset);
-  $('#hexdumpButton').click(hexdump);
+  $('#hexdumpButton').click(compiler.hexdump);
   $('#watch').click(toggleDebug);
   $('#stepButton').click(debugExec);
   $('#gotoButton').click(gotoAddr);
