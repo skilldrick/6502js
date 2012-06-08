@@ -2,6 +2,8 @@
 *  6502 assembler and emulator in Javascript
 *  (C)2006-2010 Stian Soreng - www.6502asm.com
 *
+*  Adapted by Nick Morgan
+*
 *  Released under the GNU General Public License
 *  see http://gnu.org/licenses/gpl.html
 *
@@ -2105,11 +2107,6 @@ function gotoAddr() {
 }
 
 
-/*
-*  stopDebugger() - stops debugger
-*
-*/
-
 function stopDebugger() {
   debug = false;
   if (codeRunning) {
@@ -2126,13 +2123,8 @@ function enableDebugger() {
     $('#gotoButton').attr('disabled', false);
   }
 }
-/*
-*  toggleDebug() - Toggles debugging on/off
-*
-*/
 
 function toggleDebug() {
-  // alert("debug="+debug+" og codeRunning="+codeRunning);
   debug = !debug;
   if (debug) {
     enableDebugger();
@@ -2162,11 +2154,6 @@ function disableButtons() {
   $('#gotoButton').attr('disabled', true);
   clearInterval(myInterval);
 }
-
-/*
-*  Load() - Loads a file from server
-*
-*/
 
 function Load(file) {
   reset();
@@ -2475,9 +2462,6 @@ function compileLine(input, lineno) {
   return false; // Unknown opcode
 }
 
-/*****************************************************************************
-****************************************************************************/
-
 function DCB(param) {
   values = param.split(",");
   if (values.length == 0) { return false; }
@@ -2571,12 +2555,6 @@ function checkImmediate(param, opcode) {
 }
 
 /*
-* checkIndZP() - Check indirect ZP
-*
-*/
-
-
-/*
 * checkIndirectX() - Check if param is indirect X and push value
 *
 */
@@ -2623,7 +2601,7 @@ function checkSingle(param, opcode) {
 }
 
 /*
-*  checkZeroaPage() - Check if param is ZP and push value
+*  checkZeroPage() - Check if param is ZP and push value
 *
 */
 
@@ -2795,14 +2773,6 @@ function checkAbsolute(param, opcode) {
   return false;
 }
 
-/*****************************************************************************
-****************************************************************************/
-
-/*
-*  stackPush() - Push byte to stack
-*
-*/
-
 function stackPush(value) {
   if (regSP >= 0) {
     regSP--;
@@ -2812,14 +2782,6 @@ function stackPush(value) {
     codeRunning = false;
   }
 }
-
-/*****************************************************************************
-****************************************************************************/
-
-/*
-*  stackPop() - Pop byte from stack
-*
-*/
 
 function stackPop() {
   if (regSP < 0x100) {
@@ -3113,11 +3075,6 @@ function execute() {
 function setRandomByte() {
   memory[0xfe] = Math.floor(Math.random()*256);
 }
-
-/*
-*  updatePixelDisplay() - Updates the display at one pixel position
-*
-*/
 
 function updateDisplayPixel(addr) {
   display[addr-0x200].background = palette[memory[addr] & 0x0f];
