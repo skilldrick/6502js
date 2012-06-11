@@ -34,15 +34,13 @@ var palette = [
   "#777777", "#aaff66", "#0088ff", "#bbbbbb"
 ];
 
-function setZeroFlag(value) {
+//set zero and negative processor flags based on result
+function setNVflags(value) {
   if (value) {
     regP &= 0xfd;
   } else {
     regP |= 0x02;
   }
-}
-
-function setNegativeFlag(value) {
   if (value & 0x80) {
     regP |= 0x80;
   } else {
@@ -50,29 +48,42 @@ function setNegativeFlag(value) {
   }
 }
 
-function ORA() {
-  setZeroFlag(regA);
-  setNegativeFlag(regA);
+function setNVflagsForRegA() {
+  setNVflags(regA);
 }
 
-function ASL(value) {
-  setZeroFlag(value);
-  setNegativeFlag(value);
+function setNVflagsForRegX() {
+  setNVflags(regX);
 }
 
-function AND() {
-  setZeroFlag(regA);
-  setNegativeFlag(regA);
+function setNVflagsForRegY() {
+  setNVflags(regY);
 }
 
-function BIT(value) {
-  setZeroFlag(value);
-  regP = (regP & 0x3f) | (value & 0xc0);
+var ORA = setNVflagsForRegA;
+var AND = setNVflagsForRegA;
+var ASL = setNVflags;
+var BIT = setNVflags;
+var ROL = setNVflags;
+var EOR = setNVflagsForRegA;
+var LSR = setNVflags;
+var ROR = setNVflags;
+var LDY = setNVflagsForRegY;
+var LDA = setNVflagsForRegA;
+var LDX = setNVflagsForRegX;
+
+function DEC(addr) {
+  value = memory[ addr ];
+  --value;
+  memStoreByte(zp, value&0xff);
+  setNVflags(value);
 }
 
-function ROL(value) {
-  setZeroFlag(value);
-  setNegativeFlag(value);
+function INC(addr) {
+  value = memory[ addr ];
+  ++value;
+  memStoreByte(addr, value&0xff);
+  setNVflags(value);
 }
 
 var instructions = {
@@ -337,32 +348,14 @@ var instructions = {
     zp = (popByte() + regX)&0xff;
     value = memory[zp]+ (memory[zp+1]<<8);
     regA ^= memory[value];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    EOR();
   },
 
   i45: function () {
     addr = (popByte() + regX) & 0xff;
     value = memory[addr];
     regA ^= value;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    EOR();
   },
 
   i46: function () {
@@ -371,69 +364,35 @@ var instructions = {
     regP = (regP & 0xfe) | (value&1);
     value = value >> 1;
     memStoreByte(addr, value);
-    if (value != 0) {
-      regP &= 0xfd;
-    } else {
-      regP |= 2;
-    }
-    if ((value&0x80) == 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LSR(value);
   },
 
   i48: function () {
     stackPush(regA);
+    //PHA
   },
 
   i49: function () {
     regA ^= popByte();
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    EOR();
   },
 
   i4a: function () {
     regP = (regP&0xfe) | (regA&1);
     regA = regA >> 1;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LSR(regA);
   },
 
   i4c: function () {
     regPC = popWord();
+    //JMP
   },
 
   i4d: function () {
     addr = popWord();
     value = memory[addr];
     regA ^= value;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    EOR();
   },
 
   i4e: function () {
@@ -442,52 +401,26 @@ var instructions = {
     regP = (regP&0xfe)|(value&1);
     value = value >> 1;
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LSR(value);
   },
 
   i50: function () {
     offset = popByte();
     if ((regP & 0x40) == 0) { jumpBranch(offset); }
+    //BVC
   },
 
   i51: function () {
     zp = popByte();
     value = memory[zp] + (memory[zp+1]<<8) + regY;
     regA ^= memory[value];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    EOR();
   },
 
   i55: function () {
     addr = (popByte() + regX) & 0xff;
     regA ^= memory[ addr ];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    EOR();
   },
 
   i56: function () {
@@ -496,51 +429,26 @@ var instructions = {
     regP = (regP&0xfe) | (value&1);
     value = value >> 1;
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LSR(value);
   },
 
   i58: function () {
+    throw new Error("Not implemented");
+    //CLI
   },
 
   i59: function () {
     addr = popWord() + regY;
     value = memory[ addr ];
     regA ^= value;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    EOR();
   },
 
   i5d: function () {
     addr = popWord() + regX;
     value = memory[ addr ];
     regA ^= value;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    EOR();
   },
 
   i5e: function () {
@@ -549,20 +457,12 @@ var instructions = {
     regP = (regP&0xfe) | (value&1);
     value = value >> 1;
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LSR(value);
   },
 
   i60: function () {
     regPC = (stackPop()+1) | (stackPop()<<8);
+    //RTS
   },
 
   i61: function () {
@@ -570,12 +470,14 @@ var instructions = {
     addr = memory[zp] + (memory[zp+1]<<8);
     value = memory[ addr ];
     testADC(value);
+    //ADC
   },
 
   i65: function () {
     addr = popByte();
     value = memory[ addr ];
     testADC(value);
+    //ADC
   },
 
   i66: function () {
@@ -586,35 +488,19 @@ var instructions = {
     value = value >> 1;
     if (sf) { value |= 0x80; }
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ROR(value);
   },
 
   i68: function () {
     regA = stackPop();
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    setNVflagsForRegA();
+    //PLA
   },
 
   i69: function () {
     value = popByte();
     testADC(value);
+    //ADC
   },
 
   i6a: function () {
@@ -622,25 +508,19 @@ var instructions = {
     regP = (regP&0xfe) | (regA&1);
     regA = regA >> 1;
     if (sf) { regA |= 0x80; }
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ROR(regA);
   },
 
   i6c: function () {
+    throw new Error("Not implemented");
+    //JMP
   },
 
   i6d: function () {
     addr = popWord();
     value = memory[ addr ];
     testADC(value);
+    //ADC
   },
 
   i6e: function () {
@@ -651,21 +531,13 @@ var instructions = {
     value = value >> 1;
     if (sf) { value |= 0x80; }
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ROR(value);
   },
 
   i70: function () {
     offset = popByte();
     if (regP & 0x40) { jumpBranch(offset); }
+    //BVS
   },
 
   i71: function () {
@@ -673,6 +545,7 @@ var instructions = {
     addr = memory[zp] + (memory[zp+1]<<8);
     value = memory[ addr + regY ];
     testADC(value);
+    //ADC
   },
 
   i75: function () {
@@ -680,6 +553,7 @@ var instructions = {
     value = memory[ addr ];
     regP = (regP&0xfe) | (value&1);
     testADC(value);
+    //ADC
   },
 
   i76: function () {
@@ -690,31 +564,26 @@ var instructions = {
     value = value >> 1;
     if (sf) { value |= 0x80; }
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ROR(value);
   },
 
   i78: function () {
+    throw new Error("Not implemented");
+    //SEI
   },
 
   i79: function () {
     addr = popWord();
     value = memory[ addr + regY ];
     testADC(value);
+    //ADC
   },
 
   i7d: function () {
     addr = popWord();
     value = memory[ addr + regX ];
     testADC(value);
+    //ADC
   },
 
   i7e: function () {
@@ -725,446 +594,238 @@ var instructions = {
     value = value >> 1;
     if (value) { value |= 0x80; }
     memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    ROR(value);
   },
 
   i81: function () {
     zp = (popByte()+regX)&0xff;
     addr = memory[zp] + (memory[zp+1]<<8);
     memStoreByte(addr, regA);
+    //STA
   },
 
   i84: function () {
     memStoreByte(popByte(), regY);
+    //STY
   },
 
   i85: function () {
     memStoreByte(popByte(), regA);
+    //STA
   },
 
   i86: function () {
     memStoreByte(popByte(), regX);
+    //STX
   },
 
   i88: function () {
     regY = (regY-1) & 0xff;
-    if (regY) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regY & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    setNVflagsForRegY();
+    //DEY
   },
 
   i8a: function () {
     regA = regX & 0xff;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    setNVflagsForRegA();
+    //TXA
   },
 
   i8c: function () {
     memStoreByte(popWord(), regY);
+    //STY
   },
 
   i8d: function () {
     memStoreByte(popWord(), regA);
+    //STA
   },
 
   i8e: function () {
     memStoreByte(popWord(), regX);
+    //STX
   },
 
   i90: function () {
     offset = popByte();
     if ((regP & 1) == 0) { jumpBranch(offset); }
+    //BCC
   },
 
   i91: function () {
     zp = popByte();
     addr = memory[zp] + (memory[zp+1]<<8) + regY;
     memStoreByte(addr, regA);
+    //STA
   },
 
   i94: function () {
     memStoreByte(popByte() + regX, regY);
+    //STY
   },
 
   i95: function () {
     memStoreByte(popByte() + regX, regA);
+    //STA
   },
 
   i96: function () {
     memStoreByte(popByte() + regY, regX);
+    //STX
   },
 
   i98: function () {
     regA = regY & 0xff;
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    setNVflagsForRegA();
+    //TYA
   },
 
   i99: function () {
     memStoreByte(popWord() + regY, regA);
+    //STA
   },
 
   i9a: function () {
     regSP = regX & 0xff;
+    //TXS
   },
 
   i9d: function () {
     addr = popWord();
     memStoreByte(addr + regX, regA);
+    //STA
   },
 
   ia0: function () {
     regY = popByte();
-    if (regY) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regY & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDY();
   },
 
   ia1: function () {
     zp = (popByte()+regX)&0xff;
     addr = memory[zp] + (memory[zp+1]<<8);
     regA = memory[ addr ];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDA();
   },
 
   ia2: function () {
     regX = popByte();
-    if (regX) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regX & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDX();
   },
 
   ia4: function () {
     regY = memory[ popByte() ];
-    if (regY) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regY & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDY();
   },
 
   ia5: function () {
     regA = memory[ popByte() ];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDA();
   },
 
   ia6: function () {
     regX = memory[ popByte() ];
-    if (regX) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regX & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDX();
   },
 
   ia8: function () {
     regY = regA & 0xff;
-    if (regY) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regY & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    setNVflagsForRegY();
+    //TAY
   },
 
   ia9: function () {
     regA = popByte();
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDA();
   },
 
   iaa: function () {
     regX = regA & 0xff;
-    if (regX) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regX & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    setNVflagsForRegX();
+    //TAX
   },
 
   iac: function () {
     regY = memory[ popWord() ];
-    if (regY) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regY & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDY();
   },
 
   iad: function () {
     regA = memory[ popWord() ];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDA();
   },
 
   iae: function () {
     regX = memory[ popWord() ];
-    if (regX) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regX & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDX();
   },
 
   ib0: function () {
     offset = popByte();
     if (regP & 1) { jumpBranch(offset); }
+    //BCS
   },
 
   ib1: function () {
     zp = popByte();
     addr = memory[zp] + (memory[zp+1]<<8) + regY;
     regA = memory[ addr ];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDA();
   },
 
   ib4: function () {
     regY = memory[ popByte() + regX ];
-    if (regY) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regY & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDY();
   },
 
   ib5: function () {
     regA = memory[ (popByte() + regX) & 0xff ];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDY();
   },
 
   ib6: function () {
     regX = memory[ popByte() + regY ];
-    if (regX) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regX & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDX();
   },
 
   ib8: function () {
     regP &= 0xbf;
+    //CLV
   },
 
   ib9: function () {
     addr = popWord() + regY;
     regA = memory[ addr ];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDA();
   },
 
   iba: function () {
     regX = regSP & 0xff;
+    //TSX
   },
 
   ibc: function () {
     addr = popWord() + regX;
     regY = memory[ addr ];
-    if (regY) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regY & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDY();
   },
 
   ibd: function () {
     addr = popWord() + regX;
     regA = memory[ addr ];
-    if (regA) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regA & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDA();
   },
 
   ibe: function () {
     addr = popWord() + regY;
     regX = memory[ addr ];
-    if (regX) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regX & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    LDX();
   },
 
   ic0: function () {
     value = popByte();
-    if ((regY+value) > 0xff) {
-      regP |= 1;
-    } else {
-      regP &= 0xfe;
-    }
-    ov = value;
-    value = (regY-value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    doCompare(regY, value);
+    //CPY
   },
 
   ic1: function () {
@@ -1172,99 +833,65 @@ var instructions = {
     addr = memory[zp] + (memory[zp+1]<<8) + regY;
     value = memory[ addr ];
     doCompare(regA, value);
+    //CPA
   },
 
   ic4: function () {
     value = memory[ popByte() ];
     doCompare(regY, value);
+    //CPY
   },
 
   ic5: function () {
     value = memory[ popByte() ];
     doCompare(regA, value);
+    //CPA
   },
 
   ic6: function () {
     zp = popByte();
-    value = memory[ zp ];
-    --value;
-    memStoreByte(zp, value&0xff);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    DEC(zp);
   },
 
   ic8: function () {
     regY = (regY + 1) & 0xff;
-    if (regY) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regY & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    setNVflagsForRegY();
+    //INY
   },
 
   ic9: function () {
     value = popByte();
     doCompare(regA, value);
+    //CMP
   },
 
   ica: function () {
     regX = (regX-1) & 0xff;
-    if (regX) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regX & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    setNVflagsForRegX();
+    //DEX
   },
 
   icc: function () {
     value = memory[ popWord() ];
     doCompare(regY, value);
+    //CPY
   },
 
   icd: function () {
     value = memory[ popWord() ];
     doCompare(regA, value);
+    //CPA
   },
 
   ice: function () {
     addr = popWord();
-    value = memory[ addr ];
-    --value;
-    value = value&0xff;
-    memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    DEC(addr);
   },
 
   id0: function () {
     offset = popByte();
     if ((regP&2)==0) { jumpBranch(offset); }
+    //BNE
   },
 
   id1: function () {
@@ -1272,68 +899,48 @@ var instructions = {
     addr = memory[zp] + (memory[zp+1]<<8) + regY;
     value = memory[ addr ];
     doCompare(regA, value);
+    //CMP
   },
 
   id5: function () {
     value = memory[ popByte() + regX ];
     doCompare(regA, value);
+    //CMP
   },
 
   id6: function () {
     addr = popByte() + regX;
-    value = memory[ addr ];
-    --value;
-    value = value&0xff;
-    memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    DEC(addr);
   },
 
   id8: function () {
     regP &= 0xf7;
+    //CLD
   },
 
   id9: function () {
     addr = popWord() + regY;
     value = memory[ addr ];
     doCompare(regA, value);
+    //CMP
   },
 
   idd: function () {
     addr = popWord() + regX;
     value = memory[ addr ];
     doCompare(regA, value);
+    //CMP
   },
 
   ide: function () {
     addr = popWord() + regX;
-    value = memory[ addr ];
-    --value;
-    value = value&0xff;
-    memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    DEC(addr);
   },
 
   ie0: function () {
     value = popByte();
     doCompare(regX, value);
+    //CPX
   },
 
   ie1: function () {
@@ -1341,91 +948,65 @@ var instructions = {
     addr = memory[zp] + (memory[zp+1]<<8);
     value = memory[ addr ];
     testSBC(value);
+    //SBC
   },
 
   ie4: function () {
     value = memory[ popByte() ];
     doCompare(regX, value);
+    //CPX
   },
 
   ie5: function () {
     addr = popByte();
     value = memory[ addr ];
     testSBC(value);
+    //SBC
   },
 
   ie6: function () {
     zp = popByte();
-    value = memory[ zp ];
-    ++value;
-    value = (value)&0xff;
-    memStoreByte(zp, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    INC(zp);
   },
 
   ie8: function () {
     regX = (regX + 1) & 0xff;
-    if (regX) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (regX & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    setNVflagsForRegX();
+    //INX
   },
 
   ie9: function () {
     value = popByte();
     testSBC(value);
+    //SBC
   },
 
   iea: function () {
+    //NOP
   },
 
   iec: function () {
     value = memory[ popWord() ];
     doCompare(regX, value);
+    //CPX
   },
 
   ied: function () {
     addr = popWord();
     value = memory[ addr ];
     testSBC(value);
+    //SBC
   },
 
   iee: function () {
     addr = popWord();
-    value = memory[ addr ];
-    ++value;
-    value = (value)&0xff;
-    memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    INC(addr);
   },
 
   if0: function () {
     offset = popByte();
     if (regP&2) { jumpBranch(offset); }
+    //BEQ
   },
 
   if1: function () {
@@ -1433,6 +1014,7 @@ var instructions = {
     addr = memory[zp] + (memory[zp+1]<<8);
     value = memory[ addr + regY ];
     testSBC(value);
+    //SBC
   },
 
   if5: function () {
@@ -1440,58 +1022,36 @@ var instructions = {
     value = memory[ addr ];
     regP = (regP&0xfe)|(value&1);
     testSBC(value);
+    //SBC
   },
 
   if6: function () {
     addr = popByte() + regX;
-    value = memory[ addr ];
-    ++value;
-    value=value&0xff;
-    memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    INC(addr);
   },
 
   if8: function () {
     regP |= 8;
+    //SED
   },
 
   if9: function () {
     addr = popWord();
     value = memory[ addr + regY ];
     testSBC(value);
+    //SBC
   },
 
   ifd: function () {
     addr = popWord();
     value = memory[ addr + regX ];
     testSBC(value);
+    //SBC
   },
 
   ife: function () {
     addr = popWord() + regX;
-    value = memory[ addr ];
-    ++value;
-    value=value&0xff;
-    memStoreByte(addr, value);
-    if (value) {
-      regP &= 0xfd;
-    } else {
-      regP |= 0x02;
-    }
-    if (value & 0x80) {
-      regP |= 0x80;
-    } else {
-      regP &= 0x7f;
-    }
+    INC(addr);
   },
 
   ierr: function () {
@@ -1516,16 +1076,7 @@ function doCompare(reg, val) {
     regP &= 0xfe; // Thanks, "Guest"
   }
   val = (reg-val);
-  if (val) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (val & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
+  setNVflags(val);
 }
 
 function testSBC(value) {
@@ -1565,16 +1116,7 @@ function testSBC(value) {
     }
   }
   regA = w & 0xff;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
+  setNVflagsForRegA();
 }
 
 function testADC(value) {
@@ -1609,16 +1151,7 @@ function testADC(value) {
     }
   }
   regA = tmp & 0xff;
-  if (regA) {
-    regP &= 0xfd;
-  } else {
-    regP |= 0x02;
-  }
-  if (regA & 0x80) {
-    regP |= 0x80;
-  } else {
-    regP &= 0x7f;
-  }
+  setNVflagsForRegA();
 }
 
 
