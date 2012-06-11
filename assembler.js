@@ -170,6 +170,10 @@ function Memory() {
     return memArray[addr];
   }
 
+  function getWord(addr) {
+    return get(addr) + (get(addr + 1) << 8);
+  }
+
   // storeByte() - Poke a byte, don't touch any registers
 
   function storeByte(addr, value) {
@@ -188,6 +192,7 @@ function Memory() {
   return {
     set: set,
     get: get,
+    getWord: getWord,
     storeByte: storeByte,
     storeKeypress: storeKeypress
   };
@@ -218,6 +223,14 @@ function Emulator() {
     }
   }
 
+  function setCarryFlagFromBit0(value) {
+    regP = (regP & 0xfe) | (value & 1);
+  }
+
+  function setCarryFlagFromBit7(value) {
+    regP = (regP & 0xfe) | ((value >> 7) & 1);
+  }
+
   function setNVflagsForRegA() {
     setNVflags(regA);
   }
@@ -241,6 +254,14 @@ function Emulator() {
   var LDA = setNVflagsForRegA;
   var LDX = setNVflagsForRegX;
   var LDY = setNVflagsForRegY;
+
+  function CLC() {
+    regP &= 0xfe;
+  }
+
+  function SEC() {
+    regP |= 1;
+  }
 
   function DEC(addr) {
     var value = memory.get(addr);
@@ -266,9 +287,9 @@ function Emulator() {
 
   function doCompare(reg, val) {
     if (reg >= val) {
-      regP |= 1;
+      SEC();
     } else {
-      regP &= 0xfe;
+      CLC();
     }
     val = (reg - val);
     setNVflags(val);
@@ -293,21 +314,21 @@ function Emulator() {
       }
       w += 0xf0 + (regA & 0xf0) - (value & 0xf0);
       if (w < 0x100) {
-        regP &= 0xfe;
+        CLC();
         if ((regP & 0xbf) && w < 0x80) { regP &= 0xbf; }
         w -= 0x60;
       } else {
-        regP |= 1;
+        SEC();
         if ((regP & 0xbf) && w >= 0x180) { regP &= 0xbf; }
       }
       w += tmp;
     } else {
       w = 0xff + regA - value + (regP & 1);
       if (w < 0x100) {
-        regP &= 0xfe;
+        CLC();
         if ((regP & 0xbf) && w < 0x80) { regP &= 0xbf; }
       } else {
-        regP |= 1;
+        SEC();
         if ((regP & 0xbf) && w >= 0x180) { regP &= 0xbf; }
       }
     }
@@ -330,20 +351,20 @@ function Emulator() {
       }
       tmp += (regA & 0xf0) + (value & 0xf0);
       if (tmp >= 160) {
-        regP |= 1;
+        SEC();
         if ((regP & 0xbf) && tmp >= 0x180) { regP &= 0xbf; }
         tmp += 0x60;
       } else {
-        regP &= 0xfe;
+        CLC();
         if ((regP & 0xbf) && tmp < 0x80) { regP &= 0xbf; }
       }
     } else {
       tmp = regA + value + (regP & 1);
       if (tmp >= 0x100) {
-        regP |= 1;
+        SEC();
         if ((regP & 0xbf) && tmp >= 0x180) { regP &= 0xbf; }
       } else {
-        regP &= 0xfe;
+        CLC();
         if ((regP & 0xbf) && tmp < 0x80) { regP &= 0xbf; }
       }
     }
@@ -359,7 +380,7 @@ function Emulator() {
 
     i01: function () {
       var addr = popByte() + regX;
-      var value = memory.get(addr) + (memory.get(addr + 1) << 8);
+      var value = memory.getWord(addr);
       regA |= value;
       ORA();
     },
@@ -373,7 +394,7 @@ function Emulator() {
     i06: function () {
       var zp = popByte();
       var value = memory.get(zp);
-      regP = (regP & 0xfe) | ((value >> 7) & 1);
+      setCarryFlagFromBit7(value);
       value = value << 1;
       memory.storeByte(zp, value);
       ASL(value);
@@ -390,7 +411,7 @@ function Emulator() {
     },
 
     i0a: function () {
-      regP = (regP & 0xfe) | ((regA >> 7) & 1);
+      setCarryFlagFromBit7(regA);
       regA = regA << 1;
       ASL(regA);
     },
@@ -403,7 +424,7 @@ function Emulator() {
     i0e: function () {
       var addr = popWord();
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value >> 7) & 1);
+      setCarryFlagFromBit7(value);
       value = value << 1;
       memory.storeByte(addr, value);
       ASL(value);
@@ -417,7 +438,7 @@ function Emulator() {
 
     i11: function () {
       var zp = popByte();
-      var value = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
+      var value = memory.getWord(zp) + regY;
       regA |= memory.get(value);
       ORA();
     },
@@ -431,15 +452,14 @@ function Emulator() {
     i16: function () {
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value >> 7) & 1);
+      setCarryFlagFromBit7(value);
       value = value << 1;
       memory.storeByte(addr, value);
       ASL(value);
     },
 
     i18: function () {
-      regP &= 0xfe;
-      //CLC
+      CLC();
     },
 
     i19: function () {
@@ -457,7 +477,7 @@ function Emulator() {
     i1e: function () {
       var addr = popWord() + regX;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value >> 7) & 1);
+      setCarryFlagFromBit7(value);
       value = value << 1;
       memory.storeByte(addr, value);
       ASL(value);
@@ -474,7 +494,7 @@ function Emulator() {
 
     i21: function () {
       var addr = (popByte() + regX) & 0xff;
-      var value = memory.get(addr) + (memory.get(addr + 1) << 8);
+      var value = memory.getWord(addr);
       regA &= value;
       AND();
     },
@@ -495,7 +515,7 @@ function Emulator() {
       var sf = (regP & 1);
       var addr = popByte();
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value >> 7) & 1);
+      setCarryFlagFromBit7(value);
       value = value << 1;
       value |= sf;
       memory.storeByte(addr, value);
@@ -514,7 +534,7 @@ function Emulator() {
 
     i2a: function () {
       var sf = (regP & 1);
-      regP = (regP & 0xfe) | ((regA >> 7) & 1);
+      setCarryFlagFromBit7(regA);
       regA = regA << 1;
       regA |= sf;
       ROL(regA);
@@ -535,7 +555,7 @@ function Emulator() {
       var sf = regP & 1;
       var addr = popWord();
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value >> 7) & 1);
+      setCarryFlagFromBit7(value);
       value = value << 1;
       value |= sf;
       memory.storeByte(addr, value);
@@ -550,14 +570,14 @@ function Emulator() {
 
     i31: function () {
       var zp = popByte();
-      var value = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
+      var value = memory.getWord(zp) + regY;
       regA &= memory.get(value);
       AND();
     },
 
     i35: function () {
       var zp = popByte();
-      var value = memory.get(zp) + (memory.get(zp + 1) << 8) + regX;
+      var value = memory.getWord(zp) + regX;
       regA &= memory.get(value);
       AND();
     },
@@ -566,7 +586,7 @@ function Emulator() {
       var sf = regP & 1;
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value >> 7) & 1);
+      setCarryFlagFromBit7(value);
       value = value << 1;
       value |= sf;
       memory.storeByte(addr, value);
@@ -574,8 +594,7 @@ function Emulator() {
     },
 
     i38: function () {
-      regP |= 1;
-      //SEC
+      SEC();
     },
 
     i39: function () {
@@ -596,7 +615,7 @@ function Emulator() {
       var sf = regP & 1;
       var addr = popWord() + regX;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value >> 7) & 1);
+      setCarryFlagFromBit7(value);
       value = value << 1;
       value |= sf;
       memory.storeByte(addr, value);
@@ -610,7 +629,7 @@ function Emulator() {
 
     i41: function () {
       var zp = (popByte() + regX) & 0xff;
-      var value = memory.get(zp) + (memory.get(zp + 1) << 8);
+      var value = memory.getWord(zp);
       regA ^= memory.get(value);
       EOR();
     },
@@ -625,7 +644,7 @@ function Emulator() {
     i46: function () {
       var addr = popByte() & 0xff;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | (value & 1);
+      setCarryFlagFromBit0(value);
       value = value >> 1;
       memory.storeByte(addr, value);
       LSR(value);
@@ -642,7 +661,7 @@ function Emulator() {
     },
 
     i4a: function () {
-      regP = (regP & 0xfe) | (regA & 1);
+      setCarryFlagFromBit0(regA);
       regA = regA >> 1;
       LSR(regA);
     },
@@ -662,7 +681,7 @@ function Emulator() {
     i4e: function () {
       var addr = popWord();
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | (value & 1);
+      setCarryFlagFromBit0(value);
       value = value >> 1;
       memory.storeByte(addr, value);
       LSR(value);
@@ -676,7 +695,7 @@ function Emulator() {
 
     i51: function () {
       var zp = popByte();
-      var value = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
+      var value = memory.getWord(zp) + regY;
       regA ^= memory.get(value);
       EOR();
     },
@@ -690,7 +709,7 @@ function Emulator() {
     i56: function () {
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | (value & 1);
+      setCarryFlagFromBit0(value);
       value = value >> 1;
       memory.storeByte(addr, value);
       LSR(value);
@@ -718,7 +737,7 @@ function Emulator() {
     i5e: function () {
       var addr = popWord() + regX;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | (value & 1);
+      setCarryFlagFromBit0(value);
       value = value >> 1;
       memory.storeByte(addr, value);
       LSR(value);
@@ -731,7 +750,7 @@ function Emulator() {
 
     i61: function () {
       var zp = (popByte() + regX) & 0xff;
-      var addr = memory.get(zp) + (memory.get(zp + 1) << 8);
+      var addr = memory.getWord(zp);
       var value = memory.get(addr);
       testADC(value);
       //ADC
@@ -748,7 +767,7 @@ function Emulator() {
       var sf = regP & 1;
       var addr = popByte();
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | (value & 1);
+      setCarryFlagFromBit0(value);
       value = value >> 1;
       if (sf) { value |= 0x80; }
       memory.storeByte(addr, value);
@@ -769,7 +788,7 @@ function Emulator() {
 
     i6a: function () {
       var sf = regP & 1;
-      regP = (regP & 0xfe) | (regA & 1);
+      setCarryFlagFromBit0(regA);
       regA = regA >> 1;
       if (sf) { regA |= 0x80; }
       ROR(regA);
@@ -791,7 +810,7 @@ function Emulator() {
       var sf = regP & 1;
       var addr = popWord();
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | (value & 1);
+      setCarryFlagFromBit0(value);
       value = value >> 1;
       if (sf) { value |= 0x80; }
       memory.storeByte(addr, value);
@@ -806,7 +825,7 @@ function Emulator() {
 
     i71: function () {
       var zp = popByte();
-      var addr = memory.get(zp) + (memory.get(zp + 1) << 8);
+      var addr = memory.getWord(zp);
       var value = memory.get(addr + regY);
       testADC(value);
       //ADC
@@ -815,7 +834,7 @@ function Emulator() {
     i75: function () {
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | (value & 1);
+      setCarryFlagFromBit0(value);
       testADC(value);
       //ADC
     },
@@ -824,7 +843,7 @@ function Emulator() {
       var sf = (regP & 1);
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | (value & 1);
+      setCarryFlagFromBit0(value);
       value = value >> 1;
       if (sf) { value |= 0x80; }
       memory.storeByte(addr, value);
@@ -854,7 +873,7 @@ function Emulator() {
       var sf = regP & 1;
       var addr = popWord() + regX;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | (value & 1);
+      setCarryFlagFromBit0(value);
       value = value >> 1;
       if (value) { value |= 0x80; }
       memory.storeByte(addr, value);
@@ -863,7 +882,7 @@ function Emulator() {
 
     i81: function () {
       var zp = (popByte() + regX) & 0xff;
-      var addr = memory.get(zp) + (memory.get(zp + 1) << 8);
+      var addr = memory.getWord(zp);
       memory.storeByte(addr, regA);
       //STA
     },
@@ -918,7 +937,7 @@ function Emulator() {
 
     i91: function () {
       var zp = popByte();
-      var addr = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
+      var addr = memory.getWord(zp) + regY;
       memory.storeByte(addr, regA);
       //STA
     },
@@ -967,7 +986,7 @@ function Emulator() {
 
     ia1: function () {
       var zp = (popByte() + regX) & 0xff;
-      var addr = memory.get(zp) + (memory.get(zp + 1) << 8);
+      var addr = memory.getWord(zp);
       regA = memory.get(addr);
       LDA();
     },
@@ -1032,7 +1051,7 @@ function Emulator() {
 
     ib1: function () {
       var zp = popByte();
-      var addr = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
+      var addr = memory.getWord(zp) + regY;
       regA = memory.get(addr);
       LDA();
     },
@@ -1094,7 +1113,7 @@ function Emulator() {
 
     ic1: function () {
       var zp = popByte();
-      var addr = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
+      var addr = memory.getWord(zp) + regY;
       var value = memory.get(addr);
       doCompare(regA, value);
       //CPA
@@ -1160,7 +1179,7 @@ function Emulator() {
 
     id1: function () {
       var zp = popByte();
-      var addr = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
+      var addr = memory.getWord(zp) + regY;
       var value = memory.get(addr);
       doCompare(regA, value);
       //CMP
@@ -1209,7 +1228,7 @@ function Emulator() {
 
     ie1: function () {
       var zp = (popByte() + regX) & 0xff;
-      var addr = memory.get(zp) + (memory.get(zp + 1) << 8);
+      var addr = memory.getWord(zp);
       var value = memory.get(addr);
       testSBC(value);
       //SBC
@@ -1275,7 +1294,7 @@ function Emulator() {
 
     if1: function () {
       var zp = popByte();
-      var addr = memory.get(zp) + (memory.get(zp + 1) << 8);
+      var addr = memory.getWord(zp);
       var value = memory.get(addr + regY);
       testSBC(value);
       //SBC
@@ -1284,7 +1303,7 @@ function Emulator() {
     if5: function () {
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | (value & 1);
+      setCarryFlagFromBit0(value);
       testSBC(value);
       //SBC
     },
