@@ -10,7 +10,7 @@
 */
 
 var MAX_MEM = ((32*32)-1);
-var memory = new Array(0x600);
+var memory = Memory();
 var labels = Labels();
 var compiler = Compiler();
 var emulator = Emulator();
@@ -22,6 +22,132 @@ var palette = [
   "#777777", "#aaff66", "#0088ff", "#bbbbbb"
 ];
 
+function addr2hex(addr) {
+  return num2hex((addr>>8)&0xff)+num2hex(addr&0xff);
+}
+
+function num2hex(nr) {
+  var str = "0123456789abcdef";
+  var hi = ((nr&0xf0)>>4);
+  var lo = (nr&15);
+  return str.substring(hi, hi+1) + str.substring(lo, lo+1);
+}
+
+function initialize() {
+  // Initialize everything.
+
+  $('#compileButton').attr('disabled', false);
+  $('#runButton').attr('disabled', true);
+  $('#hexdumpButton').attr('disabled', true);
+  $('#fileSelect').attr('disabled', false);
+  $('#watch').attr('checked', false);
+  $('#stepButton').attr('disabled', true);
+  $('#gotoButton').attr('disabled', true);
+
+  // Paint the "display"
+
+  var html = '<table class="screen">';
+  for (var y=0; y<32; y++) {
+    html += "<tr>";
+    for (var x=0; x<32; x++) {
+      html += '<td class="screen" id="x' + x + 'y' + y + '"></td>';
+    }
+    html += "</tr>";
+  }
+  html += "</table>";
+  $('#screen').html(html);
+
+  // Reset everything
+
+  emulator.reset();
+}
+
+/*
+*  keyPress() - Store keycode in ZP $ff
+*
+*/
+
+function keyPress(e) {
+  var value;
+  if (typeof window.event !== "undefined") {
+    e = window.event;
+  }
+  if (e.type === "keypress") {
+    value = e.which;
+    memory.storeByte(0xff, value);
+  }
+}
+
+/*
+*  disableButtons() - Disables the Run and Debug buttons when text is
+*                     altered in the code editor
+*
+*/
+
+function disableButtons() {
+  $('#compileButton').attr('disabled', false);
+  $('#runButton').attr('disabled', true);
+  $('#hexdumpButton').attr('disabled', true);
+  $('#fileSelect').attr('disabled', false);
+  $('#runButton').val('Run');
+
+  emulator.stop();
+  $('#code').focus();
+  $('#stepButton').attr('disabled', true);
+  $('#gotoButton').attr('disabled', true);
+}
+
+function Load(file) {
+  emulator.reset();
+  disableButtons();
+  emulator.stopDebugger();
+  $('#code').val("Loading, please wait..");
+  $('#compileButton').attr('disabled', true);
+  $.get("/examples/" + file, function (data) {
+    $('#code').val(data);
+    $('#compileButton').attr('disabled', false);
+  });
+}
+
+/*
+*  message() - Prints text in the message window
+*
+*/
+
+function message(text) {
+  $('#messages').append(text + '<br>').scrollTop(10000);
+}
+
+
+function Memory() {
+  var memArray = new Array(0x600);
+
+  function set(addr, val) {
+    return memArray[addr] = val;
+  }
+
+  function get(addr) {
+    return memArray[addr];
+  }
+
+  /*
+  * storeByte() - Poke a byte, don't touch any registers
+  *
+  */
+
+  function storeByte(addr, value) {
+    memory.set(addr, value & 0xff);
+    if ((addr >= 0x200) && (addr<=0x5ff)) {
+      display[addr-0x200].background = palette[memory.get(addr) & 0x0f];
+    }
+  }
+
+  return {
+    set: set,
+    get: get,
+    storeByte: storeByte
+  };
+}
 
 function Emulator() {
   var regA = 0;
@@ -73,16 +199,16 @@ function Emulator() {
   var LDY = setNVflagsForRegY;
 
   function DEC(addr) {
-    var value = memory[ addr ];
+    var value = memory.get(addr);
     --value;
-    memStoreByte(addr, value&0xff);
+    memory.storeByte(addr, value&0xff);
     setNVflags(value);
   }
 
   function INC(addr) {
-    var value = memory[ addr ];
+    var value = memory.get(addr);
     ++value;
-    memStoreByte(addr, value&0xff);
+    memory.storeByte(addr, value&0xff);
     setNVflags(value);
   }
 
@@ -190,23 +316,23 @@ function Emulator() {
 
     i01: function () {
       var addr = popByte() + regX;
-      var value = memory[addr] + (memory[addr+1] << 8);
+      var value = memory.get(addr) + (memory.get(addr+1) << 8);
       regA |= value;
       ORA();
     },
 
     i05: function () {
       var zp = popByte();
-      regA |= memory[zp];
+      regA |= memory.get(zp);
       ORA();
     },
 
     i06: function () {
       var zp = popByte();
-      var value = memory[zp];
+      var value = memory.get(zp);
       regP = (regP & 0xfe) | ((value>>7)&1);
       value = value << 1;
-      memStoreByte(zp, value);
+      memory.storeByte(zp, value);
       ASL(value);
     },
 
@@ -227,16 +353,16 @@ function Emulator() {
     },
 
     i0d: function () {
-      regA |= memory[popWord()];
+      regA |= memory.get(popWord());
       ORA();
     },
 
     i0e: function () {
       var addr = popWord();
-      var value = memory[addr];
+      var value = memory.get(addr);
       regP = (regP & 0xfe) | ((value>>7)&1);
       value = value << 1;
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       ASL(value);
     },
 
@@ -248,23 +374,23 @@ function Emulator() {
 
     i11: function () {
       var zp = popByte();
-      var value = memory[zp] + (memory[zp+1]<<8) + regY;
-      regA |= memory[value];
+      var value = memory.get(zp) + (memory.get(zp+1)<<8) + regY;
+      regA |= memory.get(value);
       ORA();
     },
 
     i15: function () {
       var addr = (popByte() + regX) & 0xff;
-      regA |= memory[addr];
+      regA |= memory.get(addr);
       ORA();
     },
 
     i16: function () {
       var addr = (popByte() + regX) & 0xff;
-      var value = memory[addr];
+      var value = memory.get(addr);
       regP = (regP & 0xfe) | ((value>>7)&1);
       value = value << 1;
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       ASL(value);
     },
 
@@ -275,22 +401,22 @@ function Emulator() {
 
     i19: function () {
       var addr = popWord() + regY;
-      regA |= memory[addr];
+      regA |= memory.get(addr);
       ORA();
     },
 
     i1d: function () {
       var addr = popWord() + regX;
-      regA |= memory[addr];
+      regA |= memory.get(addr);
       ORA();
     },
 
     i1e: function () {
       var addr = popWord() + regX;
-      var value = memory[addr];
+      var value = memory.get(addr);
       regP = (regP & 0xfe) | ((value>>7)&1);
       value = value << 1;
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       ASL(value);
     },
 
@@ -305,31 +431,31 @@ function Emulator() {
 
     i21: function () {
       var addr = (popByte() + regX)&0xff;
-      var value = memory[addr]+(memory[addr+1] << 8);
+      var value = memory.get(addr)+(memory.get(addr+1) << 8);
       regA &= value;
       AND();
     },
 
     i24: function () {
       var zp = popByte();
-      var value = memory[zp];
+      var value = memory.get(zp);
       BIT(value);
     },
 
     i25: function () {
       var zp = popByte();
-      regA &= memory[zp];
+      regA &= memory.get(zp);
       AND();
     },
 
     i26: function () {
       var sf = (regP & 1);
       var addr = popByte();
-      var value = memory[addr]; //  & regA;  -- Thanks DMSC ;)
+      var value = memory.get(addr); //  & regA;  -- Thanks DMSC ;)
       regP = (regP & 0xfe) | ((value>>7) & 1);
     value = value << 1;
     value |= sf;
-    memStoreByte(addr, value);
+    memory.storeByte(addr, value);
     ROL(value);
     },
 
@@ -352,12 +478,12 @@ function Emulator() {
     },
 
     i2c: function () {
-      var value = memory[popWord()];
+      var value = memory.get(popWord());
       BIT(value);
     },
 
     i2d: function () {
-      var value = memory[popWord()];
+      var value = memory.get(popWord());
       regA &= value;
       AND();
     },
@@ -365,11 +491,11 @@ function Emulator() {
     i2e: function () {
       var sf = regP & 1;
       var addr = popWord();
-      var value = memory[addr];
+      var value = memory.get(addr);
       regP = (regP & 0xfe) | ((value>>7)&1);
       value = value << 1;
       value |= sf;
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       ROL(value);
     },
 
@@ -381,26 +507,26 @@ function Emulator() {
 
     i31: function () {
       var zp = popByte();
-      var value = memory[zp]+(memory[zp+1]<<8) + regY;
-      regA &= memory[value];
+      var value = memory.get(zp)+(memory.get(zp+1)<<8) + regY;
+      regA &= memory.get(value);
       AND();
     },
 
     i35: function () {
       var zp = popByte();
-      var value = memory[zp]+(memory[zp+1]<<8) + regX;
-      regA &= memory[value];
+      var value = memory.get(zp)+(memory.get(zp+1)<<8) + regX;
+      regA &= memory.get(value);
       AND();
     },
 
     i36: function () {
       var sf = regP & 1;
       var addr = (popByte() + regX) & 0xff;
-      var value = memory[addr];
+      var value = memory.get(addr);
       regP = (regP & 0xfe) | ((value>>7)&1);
       value = value << 1;
       value |= sf;
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       ROL(value);
     },
 
@@ -411,14 +537,14 @@ function Emulator() {
 
     i39: function () {
       var addr = popWord() + regY;
-      var value = memory[addr];
+      var value = memory.get(addr);
       regA &= value;
       AND();
     },
 
     i3d: function () {
       var addr = popWord() + regX;
-      var value = memory[addr];
+      var value = memory.get(addr);
       regA &= value;
       AND();
     },
@@ -426,11 +552,11 @@ function Emulator() {
     i3e: function () {
       var sf = regP&1;
       var addr = popWord() + regX;
-      var value = memory[addr];
+      var value = memory.get(addr);
       regP = (regP & 0xfe) | ((value>>7)&1);
       value = value << 1;
       value |= sf;
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       ROL(value);
     },
 
@@ -441,24 +567,24 @@ function Emulator() {
 
     i41: function () {
       var zp = (popByte() + regX)&0xff;
-      var value = memory[zp]+ (memory[zp+1]<<8);
-      regA ^= memory[value];
+      var value = memory.get(zp)+ (memory.get(zp+1)<<8);
+      regA ^= memory.get(value);
       EOR();
     },
 
     i45: function () {
       var addr = (popByte() + regX) & 0xff;
-      var value = memory[addr];
+      var value = memory.get(addr);
       regA ^= value;
       EOR();
     },
 
     i46: function () {
       var addr = popByte() & 0xff;
-      var value = memory[addr];
+      var value = memory.get(addr);
       regP = (regP & 0xfe) | (value&1);
       value = value >> 1;
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       LSR(value);
     },
 
@@ -485,17 +611,17 @@ function Emulator() {
 
     i4d: function () {
       var addr = popWord();
-      var value = memory[addr];
+      var value = memory.get(addr);
       regA ^= value;
       EOR();
     },
 
     i4e: function () {
       var addr = popWord();
-      var value = memory[addr];
+      var value = memory.get(addr);
       regP = (regP&0xfe)|(value&1);
       value = value >> 1;
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       LSR(value);
     },
 
@@ -507,23 +633,23 @@ function Emulator() {
 
     i51: function () {
       var zp = popByte();
-      var value = memory[zp] + (memory[zp+1]<<8) + regY;
-      regA ^= memory[value];
+      var value = memory.get(zp) + (memory.get(zp+1)<<8) + regY;
+      regA ^= memory.get(value);
       EOR();
     },
 
     i55: function () {
       var addr = (popByte() + regX) & 0xff;
-      regA ^= memory[ addr ];
+      regA ^= memory.get(addr);
       EOR();
     },
 
     i56: function () {
       var addr = (popByte() + regX) & 0xff;
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       regP = (regP&0xfe) | (value&1);
       value = value >> 1;
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       LSR(value);
     },
 
@@ -534,24 +660,24 @@ function Emulator() {
 
     i59: function () {
       var addr = popWord() + regY;
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       regA ^= value;
       EOR();
     },
 
     i5d: function () {
       var addr = popWord() + regX;
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       regA ^= value;
       EOR();
     },
 
     i5e: function () {
       var addr = popWord() + regX;
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       regP = (regP&0xfe) | (value&1);
       value = value >> 1;
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       LSR(value);
     },
 
@@ -562,15 +688,15 @@ function Emulator() {
 
     i61: function () {
       var zp = (popByte() + regX)&0xff;
-      var addr = memory[zp] + (memory[zp+1]<<8);
-      var value = memory[ addr ];
+      var addr = memory.get(zp) + (memory.get(zp+1)<<8);
+      var value = memory.get(addr);
       testADC(value);
       //ADC
     },
 
     i65: function () {
       var addr = popByte();
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       testADC(value);
       //ADC
     },
@@ -578,11 +704,11 @@ function Emulator() {
     i66: function () {
       var sf = regP&1;
       var addr = popByte();
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       regP = (regP&0xfe)|(value&1);
       value = value >> 1;
       if (sf) { value |= 0x80; }
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       ROR(value);
     },
 
@@ -613,7 +739,7 @@ function Emulator() {
 
     i6d: function () {
       var addr = popWord();
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       testADC(value);
       //ADC
     },
@@ -621,11 +747,11 @@ function Emulator() {
     i6e: function () {
       var sf = regP&1;
       var addr = popWord();
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       regP = (regP&0xfe)|(value&1);
       value = value >> 1;
       if (sf) { value |= 0x80; }
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       ROR(value);
     },
 
@@ -637,15 +763,15 @@ function Emulator() {
 
     i71: function () {
       var zp = popByte();
-      var addr = memory[zp] + (memory[zp+1]<<8);
-      var value = memory[ addr + regY ];
+      var addr = memory.get(zp) + (memory.get(zp+1)<<8);
+      var value = memory.get(addr + regY);
       testADC(value);
       //ADC
     },
 
     i75: function () {
       var addr = (popByte() + regX) & 0xff;
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       regP = (regP&0xfe) | (value&1);
       testADC(value);
       //ADC
@@ -654,11 +780,11 @@ function Emulator() {
     i76: function () {
       var sf = (regP&1);
       var addr = (popByte() + regX) & 0xff;
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       regP = (regP&0xfe) | (value&1);
       value = value >> 1;
       if (sf) { value |= 0x80; }
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       ROR(value);
     },
 
@@ -669,14 +795,14 @@ function Emulator() {
 
     i79: function () {
       var addr = popWord();
-      var value = memory[ addr + regY ];
+      var value = memory.get(addr + regY);
       testADC(value);
       //ADC
     },
 
     i7d: function () {
       var addr = popWord();
-      var value = memory[ addr + regX ];
+      var value = memory.get(addr + regX);
       testADC(value);
       //ADC
     },
@@ -684,33 +810,33 @@ function Emulator() {
     i7e: function () {
       var sf = regP&1;
       var addr = popWord() + regX;
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       regP = (regP&0xfe) | (value&1);
       value = value >> 1;
       if (value) { value |= 0x80; }
-      memStoreByte(addr, value);
+      memory.storeByte(addr, value);
       ROR(value);
     },
 
     i81: function () {
       var zp = (popByte()+regX)&0xff;
-      var addr = memory[zp] + (memory[zp+1]<<8);
-      memStoreByte(addr, regA);
+      var addr = memory.get(zp) + (memory.get(zp+1)<<8);
+      memory.storeByte(addr, regA);
       //STA
     },
 
     i84: function () {
-      memStoreByte(popByte(), regY);
+      memory.storeByte(popByte(), regY);
       //STY
     },
 
     i85: function () {
-      memStoreByte(popByte(), regA);
+      memory.storeByte(popByte(), regA);
       //STA
     },
 
     i86: function () {
-      memStoreByte(popByte(), regX);
+      memory.storeByte(popByte(), regX);
       //STX
     },
 
@@ -727,17 +853,17 @@ function Emulator() {
     },
 
     i8c: function () {
-      memStoreByte(popWord(), regY);
+      memory.storeByte(popWord(), regY);
       //STY
     },
 
     i8d: function () {
-      memStoreByte(popWord(), regA);
+      memory.storeByte(popWord(), regA);
       //STA
     },
 
     i8e: function () {
-      memStoreByte(popWord(), regX);
+      memory.storeByte(popWord(), regX);
       //STX
     },
 
@@ -749,23 +875,23 @@ function Emulator() {
 
     i91: function () {
       var zp = popByte();
-      var addr = memory[zp] + (memory[zp+1]<<8) + regY;
-      memStoreByte(addr, regA);
+      var addr = memory.get(zp) + (memory.get(zp+1)<<8) + regY;
+      memory.storeByte(addr, regA);
       //STA
     },
 
     i94: function () {
-      memStoreByte(popByte() + regX, regY);
+      memory.storeByte(popByte() + regX, regY);
       //STY
     },
 
     i95: function () {
-      memStoreByte(popByte() + regX, regA);
+      memory.storeByte(popByte() + regX, regA);
       //STA
     },
 
     i96: function () {
-      memStoreByte(popByte() + regY, regX);
+      memory.storeByte(popByte() + regY, regX);
       //STX
     },
 
@@ -776,7 +902,7 @@ function Emulator() {
     },
 
     i99: function () {
-      memStoreByte(popWord() + regY, regA);
+      memory.storeByte(popWord() + regY, regA);
       //STA
     },
 
@@ -787,7 +913,7 @@ function Emulator() {
 
     i9d: function () {
       var addr = popWord();
-      memStoreByte(addr + regX, regA);
+      memory.storeByte(addr + regX, regA);
       //STA
     },
 
@@ -798,8 +924,8 @@ function Emulator() {
 
     ia1: function () {
       var zp = (popByte()+regX)&0xff;
-      var addr = memory[zp] + (memory[zp+1]<<8);
-      regA = memory[ addr ];
+      var addr = memory.get(zp) + (memory.get(zp+1)<<8);
+      regA = memory.get(addr);
       LDA();
     },
 
@@ -809,17 +935,17 @@ function Emulator() {
     },
 
     ia4: function () {
-      regY = memory[ popByte() ];
+      regY = memory.get(popByte());
       LDY();
     },
 
     ia5: function () {
-      regA = memory[ popByte() ];
+      regA = memory.get(popByte());
       LDA();
     },
 
     ia6: function () {
-      regX = memory[ popByte() ];
+      regX = memory.get(popByte());
       LDX();
     },
 
@@ -841,17 +967,17 @@ function Emulator() {
     },
 
     iac: function () {
-      regY = memory[ popWord() ];
+      regY = memory.get(popWord());
       LDY();
     },
 
     iad: function () {
-      regA = memory[ popWord() ];
+      regA = memory.get(popWord());
       LDA();
     },
 
     iae: function () {
-      regX = memory[ popWord() ];
+      regX = memory.get(popWord());
       LDX();
     },
 
@@ -863,23 +989,23 @@ function Emulator() {
 
     ib1: function () {
       var zp = popByte();
-      var addr = memory[zp] + (memory[zp+1]<<8) + regY;
-      regA = memory[ addr ];
+      var addr = memory.get(zp) + (memory.get(zp+1)<<8) + regY;
+      regA = memory.get(addr);
       LDA();
     },
 
     ib4: function () {
-      regY = memory[ popByte() + regX ];
+      regY = memory.get(popByte() + regX);
       LDY();
     },
 
     ib5: function () {
-      regA = memory[ (popByte() + regX) & 0xff ];
+      regA = memory.get((popByte() + regX) & 0xff);
       LDY();
     },
 
     ib6: function () {
-      regX = memory[ popByte() + regY ];
+      regX = memory.get(popByte() + regY);
       LDX();
     },
 
@@ -890,7 +1016,7 @@ function Emulator() {
 
     ib9: function () {
       var addr = popWord() + regY;
-      regA = memory[ addr ];
+      regA = memory.get(addr);
       LDA();
     },
 
@@ -901,19 +1027,19 @@ function Emulator() {
 
     ibc: function () {
       var addr = popWord() + regX;
-      regY = memory[ addr ];
+      regY = memory.get(addr);
       LDY();
     },
 
     ibd: function () {
       var addr = popWord() + regX;
-      regA = memory[ addr ];
+      regA = memory.get(addr);
       LDA();
     },
 
     ibe: function () {
       var addr = popWord() + regY;
-      regX = memory[ addr ];
+      regX = memory.get(addr);
       LDX();
     },
 
@@ -925,20 +1051,20 @@ function Emulator() {
 
     ic1: function () {
       var zp = popByte();
-      var addr = memory[zp] + (memory[zp+1]<<8) + regY;
-      var value = memory[ addr ];
+      var addr = memory.get(zp) + (memory.get(zp+1)<<8) + regY;
+      var value = memory.get(addr);
       doCompare(regA, value);
       //CPA
     },
 
     ic4: function () {
-      var value = memory[ popByte() ];
+      var value = memory.get(popByte());
       doCompare(regY, value);
       //CPY
     },
 
     ic5: function () {
-      var value = memory[ popByte() ];
+      var value = memory.get(popByte());
       doCompare(regA, value);
       //CPA
     },
@@ -967,13 +1093,13 @@ function Emulator() {
     },
 
     icc: function () {
-      var value = memory[ popWord() ];
+      var value = memory.get(popWord());
       doCompare(regY, value);
       //CPY
     },
 
     icd: function () {
-      var value = memory[ popWord() ];
+      var value = memory.get(popWord());
       doCompare(regA, value);
       //CPA
     },
@@ -991,14 +1117,14 @@ function Emulator() {
 
     id1: function () {
       var zp = popByte();
-      var addr = memory[zp] + (memory[zp+1]<<8) + regY;
-      var value = memory[ addr ];
+      var addr = memory.get(zp) + (memory.get(zp+1)<<8) + regY;
+      var value = memory.get(addr);
       doCompare(regA, value);
       //CMP
     },
 
     id5: function () {
-      var value = memory[ popByte() + regX ];
+      var value = memory.get(popByte() + regX);
       doCompare(regA, value);
       //CMP
     },
@@ -1015,14 +1141,14 @@ function Emulator() {
 
     id9: function () {
       var addr = popWord() + regY;
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       doCompare(regA, value);
       //CMP
     },
 
     idd: function () {
       var addr = popWord() + regX;
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       doCompare(regA, value);
       //CMP
     },
@@ -1040,21 +1166,21 @@ function Emulator() {
 
     ie1: function () {
       var zp = (popByte()+regX)&0xff;
-      var addr = memory[zp] + (memory[zp+1]<<8);
-      var value = memory[ addr ];
+      var addr = memory.get(zp) + (memory.get(zp+1)<<8);
+      var value = memory.get(addr);
       testSBC(value);
       //SBC
     },
 
     ie4: function () {
-      var value = memory[ popByte() ];
+      var value = memory.get(popByte());
       doCompare(regX, value);
       //CPX
     },
 
     ie5: function () {
       var addr = popByte();
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       testSBC(value);
       //SBC
     },
@@ -1081,14 +1207,14 @@ function Emulator() {
     },
 
     iec: function () {
-      var value = memory[ popWord() ];
+      var value = memory.get(popWord());
       doCompare(regX, value);
       //CPX
     },
 
     ied: function () {
       var addr = popWord();
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       testSBC(value);
       //SBC
     },
@@ -1106,15 +1232,15 @@ function Emulator() {
 
     if1: function () {
       var zp = popByte();
-      var addr = memory[zp] + (memory[zp+1]<<8);
-      var value = memory[ addr + regY ];
+      var addr = memory.get(zp) + (memory.get(zp+1)<<8);
+      var value = memory.get(addr + regY);
       testSBC(value);
       //SBC
     },
 
     if5: function () {
       var addr = (popByte() + regX)&0xff;
-      var value = memory[ addr ];
+      var value = memory.get(addr);
       regP = (regP&0xfe)|(value&1);
       testSBC(value);
       //SBC
@@ -1132,14 +1258,14 @@ function Emulator() {
 
     if9: function () {
       var addr = popWord();
-      var value = memory[ addr + regY ];
+      var value = memory(addr + regY);
       testSBC(value);
       //SBC
     },
 
     ifd: function () {
       var addr = popWord();
-      var value = memory[ addr + regX ];
+      var value = memory.get(addr + regX);
       testSBC(value);
       //SBC
     },
@@ -1158,7 +1284,7 @@ function Emulator() {
   function stackPush(value) {
     if (regSP >= 0) {
       regSP--;
-      memory[(regSP&0xff)+0x100] = value & 0xff;
+      memory.set((regSP&0xff)+0x100, value & 0xff);
     } else {
       message("Stack full: " + regSP);
       codeRunning = false;
@@ -1168,7 +1294,7 @@ function Emulator() {
   function stackPop() {
     var value;
     if (regSP < 0x100) {
-      value = memory[regSP+0x100];
+      value = memory.get(regSP+0x100);
       regSP++;
       return value;
     } else {
@@ -1184,7 +1310,7 @@ function Emulator() {
   */
 
   function popByte() {
-    return(memory[regPC++] & 0xff);
+    return(memory.get(regPC++) & 0xff);
   }
 
   /*
@@ -1270,7 +1396,7 @@ function Emulator() {
   }
 
   function setRandomByte() {
-    memory[0xfe] = Math.floor(Math.random()*256);
+    memory.set(0xfe, Math.floor(Math.random()*256));
   }
 
 
@@ -1289,7 +1415,7 @@ function Emulator() {
   }
 
   function updateDisplayPixel(addr) {
-    display[addr-0x200].background = palette[memory[addr] & 0x0f];
+    display[addr-0x200].background = palette[memory.get(addr) & 0x0f];
   }
 
   /*
@@ -1381,7 +1507,7 @@ function Emulator() {
       }
     }
     for (var i=0; i<0x600; i++) { // clear ZP, stack and screen
-      memory[i] = 0x00;
+      memory.set(i, 0x00);
     }
     regA = regX = regY = 0;
     regPC = 0x600;
@@ -1404,92 +1530,6 @@ function Emulator() {
     reset: reset,
     stop: stop
   };
-}
-
-
-// Initialize everything.
-
-$('#compileButton').attr('disabled', false);
-$('#runButton').attr('disabled', true);
-$('#hexdumpButton').attr('disabled', true);
-$('#fileSelect').attr('disabled', false);
-$('#watch').attr('checked', false);
-$('#stepButton').attr('disabled', true);
-$('#gotoButton').attr('disabled', true);
-
-// Paint the "display"
-
-var html = '<table class="screen">';
-for (var y=0; y<32; y++) {
-  html += "<tr>";
-  for (var x=0; x<32; x++) {
-    html += '<td class="screen" id="x' + x + 'y' + y + '"></td>';
-  }
-  html += "</tr>";
-}
-html += "</table>";
-$('#screen').html(html);
-
-// Reset everything
-
-emulator.reset();
-
-/*
-*  keyPress() - Store keycode in ZP $ff
-*
-*/
-
-function keyPress(e) {
-  var value;
-  if (typeof window.event !== "undefined") {
-    e = window.event;
-  }
-  if (e.type === "keypress") {
-    value = e.which;
-    memStoreByte(0xff, value);
-  }
-}
-
-
-/*
-*  disableButtons() - Disables the Run and Debug buttons when text is
-*                     altered in the code editor
-*
-*/
-
-function disableButtons() {
-  $('#compileButton').attr('disabled', false);
-  $('#runButton').attr('disabled', true);
-  $('#hexdumpButton').attr('disabled', true);
-  $('#fileSelect').attr('disabled', false);
-  $('#runButton').val('Run');
-
-  emulator.stop();
-  $('#code').focus();
-  $('#stepButton').attr('disabled', true);
-  $('#gotoButton').attr('disabled', true);
-}
-
-function Load(file) {
-  emulator.reset();
-  disableButtons();
-  emulator.stopDebugger();
-  $('#code').val("Loading, please wait..");
-  $('#compileButton').attr('disabled', true);
-  $.get("/examples/" + file, function (data) {
-    $('#code').val(data);
-    $('#compileButton').attr('disabled', false);
-  });
-}
-
-
-/*
-*  message() - Prints text in the message window
-*
-*/
-
-function message(text) {
-  $('#messages').append(text + '<br>').scrollTop(10000);
 }
 
 
@@ -1608,15 +1648,9 @@ function Labels() {
     getPC: getPC,
     displayMessage: displayMessage,
     reset: reset
-  }
+  };
 }
 
-/*
-*  compileCode()
-*
-*  "Compiles" the code into memory
-*
-*/
 
 function Compiler() {
   var defaultCodePC;
@@ -1684,6 +1718,12 @@ function Compiler() {
     ["---", null, null, null, null, null, null, null, null, null, null, null]
   ];
 
+  /*
+  *  compileCode()
+  *
+  *  "Compiles" the code into memory
+  *
+  */
 
   function compileCode() {
     emulator.reset();
@@ -1727,7 +1767,7 @@ function Compiler() {
       $('#hexdumpButton').attr('disabled', false);
       $('#compileButton').attr('disabled', true);
       $('#fileSelect').attr('disabled', false);
-      memory[defaultCodePC] = 0x00; //set a null byte at the end of the code
+      memory.set(defaultCodePC, 0x00); //set a null byte at the end of the code
     } else {
       var str = lines[i].replace("<", "&lt;").replace(">", "&gt;");
       message("<b>Syntax error line " + (i+1) + ": " + str + "</b>");
@@ -2159,7 +2199,7 @@ function Compiler() {
   */
 
   function pushByte(value) {
-    memory[defaultCodePC] = value & 0xff;
+    memory.set(defaultCodePC, value & 0xff);
     defaultCodePC++;
     codeLen++;
   }
@@ -2195,7 +2235,7 @@ function Compiler() {
         html += num2hex((n&0xff));
         html += ": ";
       }
-      html += num2hex(memory[0x600+x]);
+      html += num2hex(memory.get(0x600+x));
       if (x&1) { html += " "; }
     }
     if ((x&1)) { html += "-- [END]"; }
@@ -2215,34 +2255,7 @@ function Compiler() {
 }
 
 
-
-/* Shared memory stuff - make Memory object? */
-
-/*
-* memStoreByte() - Poke a byte, don't touch any registers
-*
-*/
-
-function memStoreByte(addr, value) {
-  memory[ addr ] = (value & 0xff);
-  if ((addr >= 0x200) && (addr<=0x5ff)) {
-    display[addr-0x200].background = palette[memory[addr] & 0x0f];
-  }
-}
-
-function addr2hex(addr) {
-  return num2hex((addr>>8)&0xff)+num2hex(addr&0xff);
-}
-
-function num2hex(nr) {
-  var str = "0123456789abcdef";
-  var hi = ((nr&0xf0)>>4);
-  var lo = (nr&15);
-  return str.substring(hi, hi+1 ) + str.substring(lo, lo+1);
-}
-
-
-
+initialize();
 
 $(document).ready(function () {
   $('#compileButton').click(function () {
