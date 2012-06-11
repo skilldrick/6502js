@@ -9,11 +9,109 @@
 *
 */
 
+var ui = UI();
+var display = Display();
 var memory = Memory();
+var emulator = Emulator();
 var labels = Labels();
 var compiler = Compiler();
-var emulator = Emulator();
-var display = Display();
+
+
+function UI() {
+  //TODO: Make this more state machine-y
+  function initialize() {
+    $('#compileButton').attr('disabled', false);
+    $('#runButton').attr('disabled', true);
+    $('#hexdumpButton').attr('disabled', true);
+    $('#fileSelect').attr('disabled', false);
+    $('#watch').attr('checked', false);
+    $('#watch').attr('disabled', true);
+    $('#stepButton').attr('disabled', true);
+    $('#gotoButton').attr('disabled', true);
+  }
+
+  function pause() {
+    $('#runButton').val('Run');
+    $('#hexdumpButton').attr('disabled', false);
+    $('#fileSelect').attr('disabled', false);
+    $('#watch').attr('disabled', true);
+    $('#watch').attr('checked', false);
+  }
+
+  function play() {
+    $('#runButton').val('Stop');
+    $('#fileSelect').attr('disabled', true);
+    $('#hexdumpButton').attr('disabled', true);
+    $('#watch').attr('disabled', false);
+  }
+
+  function stop() {
+    $('#runButton').val('Run');
+    $('#fileSelect').attr('disabled', false);
+    $('#hexdumpButton').attr('disabled', false);
+    $('#watch').attr('disabled', true);
+  }
+
+  function setDebug(debug) {
+    $('#stepButton').attr('disabled', !debug);
+    $('#gotoButton').attr('disabled', !debug);
+  }
+
+  function resetDebug() {
+    $('#watch').attr('checked', false);
+    setDebug(false);
+  }
+
+  function compileSuccess() {
+    $('#runButton').attr('disabled', false);
+    $('#hexdumpButton').attr('disabled', false);
+    $('#compileButton').attr('disabled', true);
+    $('#fileSelect').attr('disabled', false);
+  }
+
+  function compileFail() {
+    $('#runButton').attr('disabled', true);
+    $('#compileButton').attr('disabled', false);
+    $('#fileSelect').attr('disabled', false);
+  }
+
+  function disableButtons() {
+    $('#compileButton').attr('disabled', false);
+    $('#runButton').attr('disabled', true);
+    $('#hexdumpButton').attr('disabled', true);
+    $('#fileSelect').attr('disabled', false);
+    $('#runButton').val('Run');
+
+    $('#code').focus();
+    $('#stepButton').attr('disabled', true);
+    $('#gotoButton').attr('disabled', true);
+  }
+
+  function loadingCode() {
+    $('#code').val("Loading, please wait..");
+    $('#compileButton').attr('disabled', true);
+  }
+
+  function codeLoaded(code) {
+    $('#code').val(code);
+    $('#compileButton').attr('disabled', false);
+  }
+
+  return {
+    initialize: initialize,
+    pause: pause,
+    play: play,
+    stop: stop,
+    setDebug: setDebug,
+    compileSuccess: compileSuccess,
+    compileFail: compileFail,
+    disableButtons: disableButtons,
+    loadingCode: loadingCode,
+    codeLoaded: codeLoaded,
+    resetDebug: resetDebug
+  };
+}
+
 
 function Display() {
   var displayArray = new Array(0x400);
@@ -1278,21 +1376,15 @@ function Emulator() {
   function runBinary() {
     if (codeRunning) {
       /* Switch OFF everything */
-      codeRunning = false;
-      $('#runButton').val('Run');
-      $('#hexdumpButton').attr('disabled', false);
-      $('#fileSelect').attr('disabled', false);
+      stop();
+      ui.pause();
       toggleDebug();
       stopDebugger();
-      clearInterval(executeId);
     } else {
-      $('#runButton').val('Stop');
-      $('#fileSelect').attr('disabled', true);
-      $('#hexdumpButton').attr('disabled', true);
+      ui.play();
+      ui.setDebug(debug);
       codeRunning = true;
       executeId = setInterval(multiExecute, 30);
-      $('#stepButton').attr('disabled', !debug);
-      $('#gotoButton').attr('disabled', !debug);
     }
   }
 
@@ -1334,11 +1426,7 @@ function Emulator() {
     if ((regPC === 0) || (!codeRunning)) {
       stop();
       message("Program end at PC=$" + addr2hex(regPC-1));
-      $('#stepButton').attr('disabled', true);
-      $('#gotoButton').attr('disabled', true);
-      $('#runButton').val('Run');
-      $('#fileSelect').attr('disabled', false);
-      $('#hexdumpButton').attr('disabled', false);
+      ui.stop();
     }
   }
 
@@ -1394,23 +1482,20 @@ function Emulator() {
 
   function stopDebugger() {
     debug = false;
-    if (codeRunning) {
-      $('#stepButton').attr('disabled', true);
-      $('#gotoButton').attr('disabled', true);
-    }
+    ui.setDebug(debug);
+    ui.resetDebug();
   }
 
   function enableDebugger() {
     debug = true;
     if (codeRunning) {
       updateDebugInfo();
-      $('#stepButton').attr('disabled', false);
-      $('#gotoButton').attr('disabled', false);
+      ui.setDebug(debug);
     }
   }
 
   function toggleDebug(e) {
-    if (e) {
+    if (e) { //if this is a click handler
       debug = $(this).is(':checked');
     } else {
       debug = !debug;
@@ -1435,7 +1520,7 @@ function Emulator() {
     regPC = 0x600;
     regSP = 0x100;
     regP = 0x20;
-    $('#watch').attr('checked', false);
+    stopDebugger();
   }
 
   function stop() {
@@ -1684,17 +1769,12 @@ function Compiler() {
     }
 
     if (codeCompiledOK) {
-      $('#runButton').attr('disabled', false);
-      $('#hexdumpButton').attr('disabled', false);
-      $('#compileButton').attr('disabled', true);
-      $('#fileSelect').attr('disabled', false);
+      ui.compileSuccess();
       memory.set(defaultCodePC, 0x00); //set a null byte at the end of the code
     } else {
       var str = lines[i].replace("<", "&lt;").replace(">", "&gt;");
       message("<b>Syntax error line " + (i+1) + ": " + str + "</b>");
-      $('#runButton').attr('disabled', true);
-      $('#compileButton').attr('disabled', false);
-      $('#fileSelect').attr('disabled', false);
+      ui.compileFail();
       return;
     }
 
@@ -2177,13 +2257,7 @@ function num2hex(nr) {
 function initialize() {
   // Initialize everything.
 
-  $('#compileButton').attr('disabled', false);
-  $('#runButton').attr('disabled', true);
-  $('#hexdumpButton').attr('disabled', true);
-  $('#fileSelect').attr('disabled', false);
-  $('#watch').attr('checked', false);
-  $('#stepButton').attr('disabled', true);
-  $('#gotoButton').attr('disabled', true);
+  ui.initialize();
 
   var html = '<table class="screen">';
   for (var y=0; y<32; y++) {
@@ -2201,33 +2275,13 @@ function initialize() {
   emulator.reset();
 }
 
-/*
-*  disableButtons() - Disables the Run and Debug buttons when text is
-*                     altered in the code editor
-*/
-
-function disableButtons() {
-  $('#compileButton').attr('disabled', false);
-  $('#runButton').attr('disabled', true);
-  $('#hexdumpButton').attr('disabled', true);
-  $('#fileSelect').attr('disabled', false);
-  $('#runButton').val('Run');
-
-  emulator.stop();
-  $('#code').focus();
-  $('#stepButton').attr('disabled', true);
-  $('#gotoButton').attr('disabled', true);
-}
-
 function Load(file) {
   emulator.reset();
-  disableButtons();
+  ui.disableButtons();
   emulator.stopDebugger();
-  $('#code').val("Loading, please wait..");
-  $('#compileButton').attr('disabled', true);
+  ui.loadingCode();
   $.get("/examples/" + file, function (data) {
-    $('#code').val(data);
-    $('#compileButton').attr('disabled', false);
+    ui.codeLoaded(data);
   });
 }
 
@@ -2253,6 +2307,7 @@ $(document).ready(function () {
   $('#watch').change(emulator.toggleDebug);
   $('#stepButton').click(emulator.debugExec);
   $('#gotoButton').click(emulator.gotoAddr);
-  $('#code').keypress(disableButtons);
+  $('#code').keypress(emulator.stop);
+  $('#code').keypress(ui.disableButtons);
   $(document).keypress(memory.storeKeypress);
 });
