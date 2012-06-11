@@ -6,7 +6,6 @@
 *
 *  Released under the GNU General Public License
 *  see http://gnu.org/licenses/gpl.html
-*
 */
 
 var ui = UI();
@@ -122,10 +121,27 @@ function Display() {
     "#777777", "#aaff66", "#0088ff", "#bbbbbb"
   ];
 
+  function id(x, y) {
+    return "x" + x + "y" + y;
+  }
+
+  function initialize() {
+    var html = '<table class="screen">';
+    for (var y=0; y<32; y++) {
+      html += "<tr>";
+      for (var x=0; x<32; x++) {
+        html += '<td class="screen" id="' + id(x, y) + '"></td>';
+      }
+      html += "</tr>";
+    }
+    html += "</table>";
+    $('#screen').html(html);
+  }
+
   function reset() {
     for (var y=0; y<32; y++) {
       for (var x=0; x<32; x++) {
-        displayArray[y*32+x] = $('#x'+x+'y'+y)[0].style;
+        displayArray[y*32+x] = $('#' + id(x, y))[0].style;
         displayArray[y*32+x].background = "#000000";
       }
     }
@@ -135,11 +151,8 @@ function Display() {
     displayArray[addr].background = palette[colour & 0x0f];
   }
 
-  /*
-  *  update() - Simply redraws the entire display according to memory
-  *  The colors are supposed to be identical with the C64's palette.
-  */
-
+  // update() - Simply redraws the entire display according to memory
+  // The colors are supposed to be identical with the C64's palette.
   function update() {
     for (var y=0; y<32; y++) {
       for (var x=0; x<32; x++) {
@@ -153,6 +166,7 @@ function Display() {
   }
 
   return {
+    initialize: initialize,
     reset: reset,
     setPixel: setPixel,
     update: update
@@ -170,9 +184,7 @@ function Memory() {
     return memArray[addr];
   }
 
-  /*
-  * storeByte() - Poke a byte, don't touch any registers
-  */
+  // storeByte() - Poke a byte, don't touch any registers
 
   function storeByte(addr, value) {
     set(addr, value & 0xff);
@@ -181,10 +193,7 @@ function Memory() {
     }
   }
 
-  /*
-  *  storeKeypress() - Store keycode in ZP $ff
-  */
-
+  // storeKeypress() - Store keycode in ZP $ff
   function storeKeypress(e) {
     value = e.which;
     memory.storeByte(0xff, value);
@@ -1353,29 +1362,20 @@ function Emulator() {
     }
   }
 
-  /*
-  * popByte() - Pops a byte
-  */
-
+  // popByte() - Pops a byte
   function popByte() {
     return(memory.get(regPC++) & 0xff);
   }
 
-  /*
-  * popWord() - Pops a word using popByte() twice
-  */
-
+  // popWord() - Pops a word using popByte() twice
   function popWord() {
     return popByte() + (popByte() << 8);
   }
 
-  /*
-  *  runBinary() - Executes the compiled code
-  */
-
+  // runBinary() - Executes the compiled code
   function runBinary() {
     if (codeRunning) {
-      /* Switch OFF everything */
+      // Switch OFF everything
       stop();
       ui.pause();
       toggleDebug();
@@ -1412,11 +1412,8 @@ function Emulator() {
     }
   }
 
-  /*
-  *  execute() - Executes one instruction.
-  *              This is the main part of the CPU emulator.
-  */
-
+  // execute() - Executes one instruction.
+  //             This is the main part of the CPU emulator.
   function execute() {
     if (! codeRunning) { return; }
 
@@ -1435,10 +1432,7 @@ function Emulator() {
   }
 
 
-  /*
-  *  debugExec() - Execute one instruction and print values
-  */
-
+  // debugExec() - Execute one instruction and print values
   function debugExec() {
     if (codeRunning) {
       execute();
@@ -1453,10 +1447,7 @@ function Emulator() {
     $('#md').html(html);
   }
 
-  /*
-  *  gotoAddr() - Set PC to address (or address of label)
-  */
-
+  // gotoAddr() - Set PC to address (or address of label)
   function gotoAddr() {
     var inp = prompt("Enter address or label", "");
     var addr = 0;
@@ -1507,10 +1498,7 @@ function Emulator() {
     }
   }
 
-  /*
-  *  reset() - Reset CPU and memory.
-  */
-
+  // reset() - Reset CPU and memory.
   function reset() {
     display.reset();
     for (var i=0; i<0x600; i++) { // clear ZP, stack and screen
@@ -1552,12 +1540,8 @@ function Labels() {
     return true;
   }
 
-  /*
-  * indexLine(line) - extract label if line contains one and calculate position in memory.
-  * Return false if label alread exists.
-  */
-
-
+  // indexLine(line) - extract label if line contains one and calculate position in memory.
+  // Return false if label alread exists.
   function indexLine(input) {
     // remove comments
     input = input.replace(/^(.*?);.*/, "$1");
@@ -1578,10 +1562,7 @@ function Labels() {
     return true;
   }
 
-  /*
-  *  push() - Push label to array. Return false if label already exists.
-  */
-
+  // push() - Push label to array. Return false if label already exists.
   function push(name) {
     if (find(name)) {
       return false;
@@ -1590,10 +1571,7 @@ function Labels() {
     return true;
   }
 
-  /*
-  *  find() - Returns true if label exists.
-  */
-
+  // find() - Returns true if label exists.
   function find(name) {
     var nameAndAddr;
     for (var i=0; i<labelIndex.length; i++) {
@@ -1605,10 +1583,7 @@ function Labels() {
     return false;
   }
 
-  /*
-  *  setPC() - Associates label with address
-  */
-
+  // setPC() - Associates label with address
   function setPC(name, addr) {
     var nameAndAddr;
     for (var i=0; i<labelIndex.length; i++) {
@@ -1621,10 +1596,7 @@ function Labels() {
     return false;
   }
 
-  /*
-  *  getPC() - Get address associated with label
-  */
-
+  // getPC() - Get address associated with label
   function getPC(name) {
     var nameAndAddr;
     for (var i=0; i<labelIndex.length; i++) {
@@ -1724,13 +1696,8 @@ function Compiler() {
     ["---", null, null, null, null, null, null, null, null, null, null, null]
   ];
 
-  /*
-  *  compileCode()
-  *
-  *  "Compiles" the code into memory
-  *
-  */
-
+  // compileCode()
+  // "Compiles" the code into memory
   function compileCode() {
     emulator.reset();
     labels.reset();
@@ -1782,13 +1749,10 @@ function Compiler() {
     message("Code compiled successfully, " + codeLen + " bytes.");
   }
 
-  /*
-  *  compileLine()
-  *
-  *  Compiles one line of code.  Returns true if it compiled successfully,
-  *  false otherwise.
-  */
-
+  // compileLine()
+  //
+  // Compiles one line of code.  Returns true if it compiled successfully,
+  // false otherwise.
   function compileLine(input, lineno) {
     var label, command, param, addr;
 
@@ -1897,10 +1861,7 @@ function Compiler() {
     return true;
   }
 
-  /*
-  *  checkBranch() - Commom branch function for all branches (BCC, BCS, BEQ, BNE..)
-  */
-
+  // checkBranch() - Commom branch function for all branches (BCC, BCS, BEQ, BNE..)
   function checkBranch(param, opcode) {
     var addr;
     if (opcode === null) { return false; }
@@ -1919,10 +1880,7 @@ function Compiler() {
     return true;
   }
 
-  /*
-  * checkImmediate() - Check if param is immediate and push value
-  */
-
+  // checkImmediate() - Check if param is immediate and push value
   function checkImmediate(param, opcode) {
     var value, label, hilo, addr;
     if (opcode === null) { return false; }
@@ -1965,10 +1923,7 @@ function Compiler() {
     return false;
   }
 
-  /*
-  * checkIndirectX() - Check if param is indirect X and push value
-  */
-
+  // checkIndirectX() - Check if param is indirect X and push value
   function checkIndirectX(param, opcode) {
     var value;
     if (opcode === null) { return false; }
@@ -1982,10 +1937,7 @@ function Compiler() {
     return false;
   }
 
-  /*
-  * checkIndirectY() - Check if param is indirect Y and push value
-  */
-
+  // checkIndirectY() - Check if param is indirect Y and push value
   function checkIndirectY(param, opcode) {
     var value;
     if (opcode === null) { return false; }
@@ -1999,10 +1951,7 @@ function Compiler() {
     return false;
   }
 
-  /*
-  *  checkSingle() - Single-byte opcodes
-  */
-
+  // checkSingle() - Single-byte opcodes
   function checkSingle(param, opcode) {
     if (opcode === null) { return false; }
     if (param !== "") { return false; }
@@ -2010,10 +1959,7 @@ function Compiler() {
     return true;
   }
 
-  /*
-  *  checkZeroPage() - Check if param is ZP and push value
-  */
-
+  // checkZeroPage() - Check if param is ZP and push value
   function checkZeroPage(param, opcode) {
     var value;
     if (opcode === null) { return false; }
@@ -2034,10 +1980,7 @@ function Compiler() {
     return false;
   }
 
-  /*
-  *  checkAbsoluteX() - Check if param is ABSX and push value
-  */
-
+  // checkAbsoluteX() - Check if param is ABSX and push value
   function checkAbsoluteX(param, opcode) {
     var number, value, addr;
     if (opcode === null) { return false; }
@@ -2067,10 +2010,7 @@ function Compiler() {
     return false;
   }
 
-  /*
-  *  checkAbsoluteY() - Check if param is ABSY and push value
-  */
-
+  // checkAbsoluteY() - Check if param is ABSY and push value
   function checkAbsoluteY(param, opcode) {
     var number, value, addr;
     if (opcode === null) { return false; }
@@ -2101,10 +2041,7 @@ function Compiler() {
     return false;
   }
 
-  /*
-  *  checkZeroPageX() - Check if param is ZPX and push value
-  */
-
+  // checkZeroPageX() - Check if param is ZPX and push value
   function checkZeroPageX(param, opcode) {
     var number, value;
     if (opcode === null) { return false; }
@@ -2149,10 +2086,7 @@ function Compiler() {
     return false;
   }
 
-  /*
-  *  checkAbsolute() - Check if param is ABS and push value
-  */
-
+  // checkAbsolute() - Check if param is ABS and push value
   function checkAbsolute(param, opcode) {
     var value, number, addr;
     if (opcode === null) { return false; }
@@ -2184,29 +2118,20 @@ function Compiler() {
     return false;
   }
 
-  /*
-  * pushByte() - Push byte to memory
-  */
-
+  // pushByte() - Push byte to memory
   function pushByte(value) {
     memory.set(defaultCodePC, value & 0xff);
     defaultCodePC++;
     codeLen++;
   }
 
-  /*
-  * pushWord() - Push a word using pushByte twice
-  */
-
+  // pushWord() - Push a word using pushByte twice
   function pushWord(value) {
     pushByte(value & 0xff);
     pushByte((value>>8) & 0xff);
   }
 
-  /*
-  *  hexDump() - Dump binary as hex to new window
-  */
-
+  // hexDump() - Dump binary as hex to new window
   function hexdump() {
     var w = window.open('', 'hexdump', 'width=500,height=300,resizable=yes,scrollbars=yes,toolbar=no,location=no,menubar=no,status=no');
     var n;
@@ -2254,27 +2179,6 @@ function num2hex(nr) {
   return str.substring(hi, hi+1) + str.substring(lo, lo+1);
 }
 
-function initialize() {
-  // Initialize everything.
-
-  ui.initialize();
-
-  var html = '<table class="screen">';
-  for (var y=0; y<32; y++) {
-    html += "<tr>";
-    for (var x=0; x<32; x++) {
-      html += '<td class="screen" id="x' + x + 'y' + y + '"></td>';
-    }
-    html += "</tr>";
-  }
-  html += "</table>";
-  $('#screen').html(html);
-
-  // Reset everything
-
-  emulator.reset();
-}
-
 function Load(file) {
   emulator.reset();
   ui.disableButtons();
@@ -2285,14 +2189,16 @@ function Load(file) {
   });
 }
 
-/*
-*  message() - Prints text in the message window
-*/
-
+// message() - Prints text in the message window
 function message(text) {
   $('#messages').append(text + '<br>').scrollTop(10000);
 }
 
+function initialize() {
+  ui.initialize();
+  display.initialize();
+  emulator.reset();
+}
 
 
 initialize();
