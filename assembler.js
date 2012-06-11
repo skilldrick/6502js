@@ -127,9 +127,9 @@ function Display() {
 
   function initialize() {
     var html = '<table class="screen">';
-    for (var y=0; y<32; y++) {
+    for (var y = 0; y < 32; y++) {
       html += "<tr>";
-      for (var x=0; x<32; x++) {
+      for (var x = 0; x < 32; x++) {
         html += '<td class="screen" id="' + id(x, y) + '"></td>';
       }
       html += "</tr>";
@@ -139,17 +139,17 @@ function Display() {
   }
 
   function reset() {
-    for (var y=0; y<32; y++) {
-      for (var x=0; x<32; x++) {
-        displayArray[y*32+x] = $('#' + id(x, y));
-        displayArray[y*32+x].css('background', '#000000');
+    for (var y = 0; y < 32; y++) {
+      for (var x = 0; x < 32; x++) {
+        displayArray[y * 32 + x] = $('#' + id(x, y));
+        displayArray[y * 32 + x].css('background', '#000000');
       }
     }
   }
 
   function updatePixel(addr) {
     var colour = palette[memory.get(addr) & 0x0f];
-    displayArray[addr-0x200].css('background', colour);
+    displayArray[addr - 0x200].css('background', colour);
   }
 
   return {
@@ -174,7 +174,7 @@ function Memory() {
 
   function storeByte(addr, value) {
     set(addr, value & 0xff);
-    if ((addr >= 0x200) && (addr<=0x5ff)) {
+    if ((addr >= 0x200) && (addr <= 0x5ff)) {
       display.updatePixel(addr);
     }
   }
@@ -244,15 +244,15 @@ function Emulator() {
 
   function DEC(addr) {
     var value = memory.get(addr);
-    --value;
-    memory.storeByte(addr, value&0xff);
+    value--;
+    memory.storeByte(addr, value & 0xff);
     setNVflags(value);
   }
 
   function INC(addr) {
     var value = memory.get(addr);
-    ++value;
-    memory.storeByte(addr, value&0xff);
+    value++;
+    memory.storeByte(addr, value & 0xff);
     setNVflags(value);
   }
 
@@ -265,13 +265,12 @@ function Emulator() {
   }
 
   function doCompare(reg, val) {
-    //  if ((reg+val) > 0xff) regP |= 1; else regP &= 0xfe;
-    if (reg>=val) {
+    if (reg >= val) {
       regP |= 1;
     } else {
-      regP &= 0xfe; // Thanks, "Guest"
+      regP &= 0xfe;
     }
-    val = (reg-val);
+    val = (reg - val);
     setNVflags(val);
   }
 
@@ -284,7 +283,7 @@ function Emulator() {
     }
 
     if (regP & 8) {
-      tmp = 0xf + (regA & 0xf) - (value & 0xf) + (regP&1);
+      tmp = 0xf + (regA & 0xf) - (value & 0xf) + (regP & 1);
       if (tmp < 0x10) {
         w = 0;
         tmp -= 6;
@@ -295,21 +294,21 @@ function Emulator() {
       w += 0xf0 + (regA & 0xf0) - (value & 0xf0);
       if (w < 0x100) {
         regP &= 0xfe;
-        if ((regP&0xbf) && w<0x80) { regP&=0xbf; }
+        if ((regP & 0xbf) && w < 0x80) { regP &= 0xbf; }
         w -= 0x60;
       } else {
         regP |= 1;
-        if ((regP&0xbf) && w>=0x180) { regP&=0xbf; }
+        if ((regP & 0xbf) && w >= 0x180) { regP &= 0xbf; }
       }
       w += tmp;
     } else {
-      w = 0xff + regA - value + (regP&1);
-      if (w<0x100) {
+      w = 0xff + regA - value + (regP & 1);
+      if (w < 0x100) {
         regP &= 0xfe;
-        if ((regP&0xbf) && w<0x80) { regP&=0xbf; }
+        if ((regP & 0xbf) && w < 0x80) { regP &= 0xbf; }
       } else {
         regP |= 1;
-        if ((regP&0xbf) && w>= 0x180) { regP&=0xbf; }
+        if ((regP & 0xbf) && w >= 0x180) { regP &= 0xbf; }
       }
     }
     regA = w & 0xff;
@@ -325,27 +324,27 @@ function Emulator() {
     }
 
     if (regP & 8) {
-      tmp = (regA & 0xf) + (value & 0xf) + (regP&1);
+      tmp = (regA & 0xf) + (value & 0xf) + (regP & 1);
       if (tmp >= 10) {
-        tmp = 0x10 | ((tmp+6)&0xf);
+        tmp = 0x10 | ((tmp + 6) & 0xf);
       }
       tmp += (regA & 0xf0) + (value & 0xf0);
       if (tmp >= 160) {
         regP |= 1;
-        if ((regP&0xbf) && tmp >= 0x180) { regP &= 0xbf; }
+        if ((regP & 0xbf) && tmp >= 0x180) { regP &= 0xbf; }
         tmp += 0x60;
       } else {
         regP &= 0xfe;
-        if ((regP&0xbf) && tmp<0x80) { regP &= 0xbf; }
+        if ((regP & 0xbf) && tmp < 0x80) { regP &= 0xbf; }
       }
     } else {
-      tmp = regA + value + (regP&1);
+      tmp = regA + value + (regP & 1);
       if (tmp >= 0x100) {
         regP |= 1;
-        if ((regP&0xbf) && tmp>=0x180) { regP &= 0xbf; }
+        if ((regP & 0xbf) && tmp >= 0x180) { regP &= 0xbf; }
       } else {
         regP &= 0xfe;
-        if ((regP&0xbf) && tmp<0x80) { regP &= 0xbf; }
+        if ((regP & 0xbf) && tmp < 0x80) { regP &= 0xbf; }
       }
     }
     regA = tmp & 0xff;
@@ -360,7 +359,7 @@ function Emulator() {
 
     i01: function () {
       var addr = popByte() + regX;
-      var value = memory.get(addr) + (memory.get(addr+1) << 8);
+      var value = memory.get(addr) + (memory.get(addr + 1) << 8);
       regA |= value;
       ORA();
     },
@@ -374,7 +373,7 @@ function Emulator() {
     i06: function () {
       var zp = popByte();
       var value = memory.get(zp);
-      regP = (regP & 0xfe) | ((value>>7)&1);
+      regP = (regP & 0xfe) | ((value >> 7) & 1);
       value = value << 1;
       memory.storeByte(zp, value);
       ASL(value);
@@ -391,8 +390,8 @@ function Emulator() {
     },
 
     i0a: function () {
-      regP = (regP & 0xfe) | ((regA>>7)&1);
-      regA = regA<<1;
+      regP = (regP & 0xfe) | ((regA >> 7) & 1);
+      regA = regA << 1;
       ASL(regA);
     },
 
@@ -404,7 +403,7 @@ function Emulator() {
     i0e: function () {
       var addr = popWord();
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value>>7)&1);
+      regP = (regP & 0xfe) | ((value >> 7) & 1);
       value = value << 1;
       memory.storeByte(addr, value);
       ASL(value);
@@ -418,7 +417,7 @@ function Emulator() {
 
     i11: function () {
       var zp = popByte();
-      var value = memory.get(zp) + (memory.get(zp+1)<<8) + regY;
+      var value = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
       regA |= memory.get(value);
       ORA();
     },
@@ -432,7 +431,7 @@ function Emulator() {
     i16: function () {
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value>>7)&1);
+      regP = (regP & 0xfe) | ((value >> 7) & 1);
       value = value << 1;
       memory.storeByte(addr, value);
       ASL(value);
@@ -458,7 +457,7 @@ function Emulator() {
     i1e: function () {
       var addr = popWord() + regX;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value>>7)&1);
+      regP = (regP & 0xfe) | ((value >> 7) & 1);
       value = value << 1;
       memory.storeByte(addr, value);
       ASL(value);
@@ -466,7 +465,7 @@ function Emulator() {
 
     i20: function () {
       var addr = popWord();
-      var currAddr = regPC-1;
+      var currAddr = regPC - 1;
       stackPush(((currAddr >> 8) & 0xff));
       stackPush((currAddr & 0xff));
       regPC = addr;
@@ -474,8 +473,8 @@ function Emulator() {
     },
 
     i21: function () {
-      var addr = (popByte() + regX)&0xff;
-      var value = memory.get(addr)+(memory.get(addr+1) << 8);
+      var addr = (popByte() + regX) & 0xff;
+      var value = memory.get(addr) + (memory.get(addr + 1) << 8);
       regA &= value;
       AND();
     },
@@ -495,12 +494,12 @@ function Emulator() {
     i26: function () {
       var sf = (regP & 1);
       var addr = popByte();
-      var value = memory.get(addr); //  & regA;  -- Thanks DMSC ;)
-      regP = (regP & 0xfe) | ((value>>7) & 1);
-    value = value << 1;
-    value |= sf;
-    memory.storeByte(addr, value);
-    ROL(value);
+      var value = memory.get(addr);
+      regP = (regP & 0xfe) | ((value >> 7) & 1);
+      value = value << 1;
+      value |= sf;
+      memory.storeByte(addr, value);
+      ROL(value);
     },
 
     i28: function () {
@@ -514,8 +513,8 @@ function Emulator() {
     },
 
     i2a: function () {
-      var sf = (regP&1);
-      regP = (regP&0xfe) | ((regA>>7)&1);
+      var sf = (regP & 1);
+      regP = (regP & 0xfe) | ((regA >> 7) & 1);
       regA = regA << 1;
       regA |= sf;
       ROL(regA);
@@ -536,7 +535,7 @@ function Emulator() {
       var sf = regP & 1;
       var addr = popWord();
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value>>7)&1);
+      regP = (regP & 0xfe) | ((value >> 7) & 1);
       value = value << 1;
       value |= sf;
       memory.storeByte(addr, value);
@@ -551,14 +550,14 @@ function Emulator() {
 
     i31: function () {
       var zp = popByte();
-      var value = memory.get(zp)+(memory.get(zp+1)<<8) + regY;
+      var value = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
       regA &= memory.get(value);
       AND();
     },
 
     i35: function () {
       var zp = popByte();
-      var value = memory.get(zp)+(memory.get(zp+1)<<8) + regX;
+      var value = memory.get(zp) + (memory.get(zp + 1) << 8) + regX;
       regA &= memory.get(value);
       AND();
     },
@@ -567,7 +566,7 @@ function Emulator() {
       var sf = regP & 1;
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value>>7)&1);
+      regP = (regP & 0xfe) | ((value >> 7) & 1);
       value = value << 1;
       value |= sf;
       memory.storeByte(addr, value);
@@ -594,10 +593,10 @@ function Emulator() {
     },
 
     i3e: function () {
-      var sf = regP&1;
+      var sf = regP & 1;
       var addr = popWord() + regX;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | ((value>>7)&1);
+      regP = (regP & 0xfe) | ((value >> 7) & 1);
       value = value << 1;
       value |= sf;
       memory.storeByte(addr, value);
@@ -610,8 +609,8 @@ function Emulator() {
     },
 
     i41: function () {
-      var zp = (popByte() + regX)&0xff;
-      var value = memory.get(zp)+ (memory.get(zp+1)<<8);
+      var zp = (popByte() + regX) & 0xff;
+      var value = memory.get(zp) + (memory.get(zp + 1) << 8);
       regA ^= memory.get(value);
       EOR();
     },
@@ -626,7 +625,7 @@ function Emulator() {
     i46: function () {
       var addr = popByte() & 0xff;
       var value = memory.get(addr);
-      regP = (regP & 0xfe) | (value&1);
+      regP = (regP & 0xfe) | (value & 1);
       value = value >> 1;
       memory.storeByte(addr, value);
       LSR(value);
@@ -643,7 +642,7 @@ function Emulator() {
     },
 
     i4a: function () {
-      regP = (regP&0xfe) | (regA&1);
+      regP = (regP & 0xfe) | (regA & 1);
       regA = regA >> 1;
       LSR(regA);
     },
@@ -663,7 +662,7 @@ function Emulator() {
     i4e: function () {
       var addr = popWord();
       var value = memory.get(addr);
-      regP = (regP&0xfe)|(value&1);
+      regP = (regP & 0xfe) | (value & 1);
       value = value >> 1;
       memory.storeByte(addr, value);
       LSR(value);
@@ -677,7 +676,7 @@ function Emulator() {
 
     i51: function () {
       var zp = popByte();
-      var value = memory.get(zp) + (memory.get(zp+1)<<8) + regY;
+      var value = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
       regA ^= memory.get(value);
       EOR();
     },
@@ -691,7 +690,7 @@ function Emulator() {
     i56: function () {
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
-      regP = (regP&0xfe) | (value&1);
+      regP = (regP & 0xfe) | (value & 1);
       value = value >> 1;
       memory.storeByte(addr, value);
       LSR(value);
@@ -719,20 +718,20 @@ function Emulator() {
     i5e: function () {
       var addr = popWord() + regX;
       var value = memory.get(addr);
-      regP = (regP&0xfe) | (value&1);
+      regP = (regP & 0xfe) | (value & 1);
       value = value >> 1;
       memory.storeByte(addr, value);
       LSR(value);
     },
 
     i60: function () {
-      regPC = (stackPop()+1) | (stackPop()<<8);
+      regPC = (stackPop() + 1) | (stackPop() << 8);
       //RTS
     },
 
     i61: function () {
-      var zp = (popByte() + regX)&0xff;
-      var addr = memory.get(zp) + (memory.get(zp+1)<<8);
+      var zp = (popByte() + regX) & 0xff;
+      var addr = memory.get(zp) + (memory.get(zp + 1) << 8);
       var value = memory.get(addr);
       testADC(value);
       //ADC
@@ -746,10 +745,10 @@ function Emulator() {
     },
 
     i66: function () {
-      var sf = regP&1;
+      var sf = regP & 1;
       var addr = popByte();
       var value = memory.get(addr);
-      regP = (regP&0xfe)|(value&1);
+      regP = (regP & 0xfe) | (value & 1);
       value = value >> 1;
       if (sf) { value |= 0x80; }
       memory.storeByte(addr, value);
@@ -769,8 +768,8 @@ function Emulator() {
     },
 
     i6a: function () {
-      var sf = regP&1;
-      regP = (regP&0xfe) | (regA&1);
+      var sf = regP & 1;
+      regP = (regP & 0xfe) | (regA & 1);
       regA = regA >> 1;
       if (sf) { regA |= 0x80; }
       ROR(regA);
@@ -789,10 +788,10 @@ function Emulator() {
     },
 
     i6e: function () {
-      var sf = regP&1;
+      var sf = regP & 1;
       var addr = popWord();
       var value = memory.get(addr);
-      regP = (regP&0xfe)|(value&1);
+      regP = (regP & 0xfe) | (value & 1);
       value = value >> 1;
       if (sf) { value |= 0x80; }
       memory.storeByte(addr, value);
@@ -807,7 +806,7 @@ function Emulator() {
 
     i71: function () {
       var zp = popByte();
-      var addr = memory.get(zp) + (memory.get(zp+1)<<8);
+      var addr = memory.get(zp) + (memory.get(zp + 1) << 8);
       var value = memory.get(addr + regY);
       testADC(value);
       //ADC
@@ -816,16 +815,16 @@ function Emulator() {
     i75: function () {
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
-      regP = (regP&0xfe) | (value&1);
+      regP = (regP & 0xfe) | (value & 1);
       testADC(value);
       //ADC
     },
 
     i76: function () {
-      var sf = (regP&1);
+      var sf = (regP & 1);
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
-      regP = (regP&0xfe) | (value&1);
+      regP = (regP & 0xfe) | (value & 1);
       value = value >> 1;
       if (sf) { value |= 0x80; }
       memory.storeByte(addr, value);
@@ -852,10 +851,10 @@ function Emulator() {
     },
 
     i7e: function () {
-      var sf = regP&1;
+      var sf = regP & 1;
       var addr = popWord() + regX;
       var value = memory.get(addr);
-      regP = (regP&0xfe) | (value&1);
+      regP = (regP & 0xfe) | (value & 1);
       value = value >> 1;
       if (value) { value |= 0x80; }
       memory.storeByte(addr, value);
@@ -863,8 +862,8 @@ function Emulator() {
     },
 
     i81: function () {
-      var zp = (popByte()+regX)&0xff;
-      var addr = memory.get(zp) + (memory.get(zp+1)<<8);
+      var zp = (popByte() + regX) & 0xff;
+      var addr = memory.get(zp) + (memory.get(zp + 1) << 8);
       memory.storeByte(addr, regA);
       //STA
     },
@@ -885,7 +884,7 @@ function Emulator() {
     },
 
     i88: function () {
-      regY = (regY-1) & 0xff;
+      regY = (regY - 1) & 0xff;
       setNVflagsForRegY();
       //DEY
     },
@@ -919,7 +918,7 @@ function Emulator() {
 
     i91: function () {
       var zp = popByte();
-      var addr = memory.get(zp) + (memory.get(zp+1)<<8) + regY;
+      var addr = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
       memory.storeByte(addr, regA);
       //STA
     },
@@ -967,8 +966,8 @@ function Emulator() {
     },
 
     ia1: function () {
-      var zp = (popByte()+regX)&0xff;
-      var addr = memory.get(zp) + (memory.get(zp+1)<<8);
+      var zp = (popByte() + regX) & 0xff;
+      var addr = memory.get(zp) + (memory.get(zp + 1) << 8);
       regA = memory.get(addr);
       LDA();
     },
@@ -1033,7 +1032,7 @@ function Emulator() {
 
     ib1: function () {
       var zp = popByte();
-      var addr = memory.get(zp) + (memory.get(zp+1)<<8) + regY;
+      var addr = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
       regA = memory.get(addr);
       LDA();
     },
@@ -1095,7 +1094,7 @@ function Emulator() {
 
     ic1: function () {
       var zp = popByte();
-      var addr = memory.get(zp) + (memory.get(zp+1)<<8) + regY;
+      var addr = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
       var value = memory.get(addr);
       doCompare(regA, value);
       //CPA
@@ -1131,7 +1130,7 @@ function Emulator() {
     },
 
     ica: function () {
-      regX = (regX-1) & 0xff;
+      regX = (regX - 1) & 0xff;
       setNVflagsForRegX();
       //DEX
     },
@@ -1155,13 +1154,13 @@ function Emulator() {
 
     id0: function () {
       var offset = popByte();
-      if (!(regP&2)) { jumpBranch(offset); }
+      if (!(regP & 2)) { jumpBranch(offset); }
       //BNE
     },
 
     id1: function () {
       var zp = popByte();
-      var addr = memory.get(zp) + (memory.get(zp+1)<<8) + regY;
+      var addr = memory.get(zp) + (memory.get(zp + 1) << 8) + regY;
       var value = memory.get(addr);
       doCompare(regA, value);
       //CMP
@@ -1209,8 +1208,8 @@ function Emulator() {
     },
 
     ie1: function () {
-      var zp = (popByte()+regX)&0xff;
-      var addr = memory.get(zp) + (memory.get(zp+1)<<8);
+      var zp = (popByte() + regX) & 0xff;
+      var addr = memory.get(zp) + (memory.get(zp + 1) << 8);
       var value = memory.get(addr);
       testSBC(value);
       //SBC
@@ -1270,22 +1269,22 @@ function Emulator() {
 
     if0: function () {
       var offset = popByte();
-      if (regP&2) { jumpBranch(offset); }
+      if (regP & 2) { jumpBranch(offset); }
       //BEQ
     },
 
     if1: function () {
       var zp = popByte();
-      var addr = memory.get(zp) + (memory.get(zp+1)<<8);
+      var addr = memory.get(zp) + (memory.get(zp + 1) << 8);
       var value = memory.get(addr + regY);
       testSBC(value);
       //SBC
     },
 
     if5: function () {
-      var addr = (popByte() + regX)&0xff;
+      var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
-      regP = (regP&0xfe)|(value&1);
+      regP = (regP & 0xfe) | (value & 1);
       testSBC(value);
       //SBC
     },
@@ -1328,7 +1327,7 @@ function Emulator() {
   function stackPush(value) {
     if (regSP >= 0) {
       regSP--;
-      memory.set((regSP&0xff)+0x100, value & 0xff);
+      memory.set((regSP & 0xff) + 0x100, value & 0xff);
     } else {
       message("Stack full: " + regSP);
       codeRunning = false;
@@ -1338,7 +1337,7 @@ function Emulator() {
   function stackPop() {
     var value;
     if (regSP < 0x100) {
-      value = memory.get(regSP+0x100);
+      value = memory.get(regSP + 0x100);
       regSP++;
       return value;
     } else {
@@ -1375,8 +1374,8 @@ function Emulator() {
   }
 
   function multiExecute() {
-    if (! debug) {
-      for (var w=0; w<200; w++) {
+    if (!debug) {
+      for (var w = 0; w < 200; w++) {
         execute();
       }
     }
@@ -1401,20 +1400,20 @@ function Emulator() {
   // execute() - Executes one instruction.
   //             This is the main part of the CPU emulator.
   function execute() {
-    if (! codeRunning) { return; }
+    if (!codeRunning) { return; }
 
     setRandomByte();
     executeNextInstruction();
 
     if ((regPC === 0) || (!codeRunning)) {
       stop();
-      message("Program end at PC=$" + addr2hex(regPC-1));
+      message("Program end at PC=$" + addr2hex(regPC - 1));
       ui.stop();
     }
   }
 
   function setRandomByte() {
-    memory.set(0xfe, Math.floor(Math.random()*256));
+    memory.set(0xfe, Math.floor(Math.random() * 256));
   }
 
 
@@ -1428,8 +1427,8 @@ function Emulator() {
 
   function updateDebugInfo() {
     var html = "<br />";
-    html += "A=$" + num2hex(regA)+" X=$" + num2hex(regX)+" Y=$" + num2hex(regY)+"<br />";
-    html += "P=$" + num2hex(regP)+" SP=$"+addr2hex(regSP)+" PC=$" + addr2hex(regPC);
+    html += "A=$" + num2hex(regA) + " X=$" + num2hex(regX) + " Y=$" + num2hex(regY) + "<br />";
+    html += "P=$" + num2hex(regP) + " SP=$" + addr2hex(regSP) + " PC=$" + addr2hex(regPC);
     $('#md').html(html);
   }
 
@@ -1487,7 +1486,7 @@ function Emulator() {
   // reset() - Reset CPU and memory.
   function reset() {
     display.reset();
-    for (var i=0; i<0x600; i++) { // clear ZP, stack and screen
+    for (var i = 0; i < 0x600; i++) { // clear ZP, stack and screen
       memory.set(i, 0x00);
     }
     regA = regX = regY = 0;
@@ -1518,8 +1517,8 @@ function Labels() {
 
   function indexLines(lines) {
     for (var i = 0; i < lines.length; i++) {
-      if (! indexLine(lines[i])) {
-        message("<b>Label already defined at line "+(i + 1)+":</b> "+lines[i]);
+      if (!indexLine(lines[i])) {
+        message("<b>Label already defined at line " + (i + 1) + ":</b> " + lines[i]);
         return false;
       }
     }
@@ -1560,7 +1559,7 @@ function Labels() {
   // find() - Returns true if label exists.
   function find(name) {
     var nameAndAddr;
-    for (var i=0; i<labelIndex.length; i++) {
+    for (var i = 0; i < labelIndex.length; i++) {
       nameAndAddr = labelIndex[i].split("|");
       if (name === nameAndAddr[0]) {
         return true;
@@ -1572,7 +1571,7 @@ function Labels() {
   // setPC() - Associates label with address
   function setPC(name, addr) {
     var nameAndAddr;
-    for (var i=0; i<labelIndex.length; i++) {
+    for (var i = 0; i < labelIndex.length; i++) {
       nameAndAddr = labelIndex[i].split("|");
       if (name === nameAndAddr[0]) {
         labelIndex[i] = name + "|" + addr;
@@ -1585,7 +1584,7 @@ function Labels() {
   // getPC() - Get address associated with label
   function getPC(name) {
     var nameAndAddr;
-    for (var i=0; i<labelIndex.length; i++) {
+    for (var i = 0; i < labelIndex.length; i++) {
       nameAndAddr = labelIndex[i].split("|");
       if (name === nameAndAddr[0]) {
         return (nameAndAddr[1]);
@@ -1710,7 +1709,7 @@ function Compiler() {
 
     codeLen = 0;
     for (var i = 0; i < lines.length; i++) {
-      if (! compileLine(lines[i], i)) {
+      if (!compileLine(lines[i], i)) {
         codeCompiledOK = false;
         break;
       }
@@ -1726,7 +1725,7 @@ function Compiler() {
       memory.set(defaultCodePC, 0x00); //set a null byte at the end of the code
     } else {
       var str = lines[i].replace("<", "&lt;").replace(">", "&gt;");
-      message("<b>Syntax error line " + (i+1) + ": " + str + "</b>");
+      message("<b>Syntax error line " + (i + 1) + ": " + str + "</b>");
       ui.compileFail();
       return;
     }
@@ -1806,7 +1805,7 @@ function Compiler() {
     }
 
 
-    for (var o=0; o<Opcodes.length; o++) {
+    for (var o = 0; o < Opcodes.length; o++) {
       if (Opcodes[o][0] === command) {
         if (checkSingle(param, Opcodes[o][10])) { return true; }
         if (checkImmediate(param, Opcodes[o][1])) { return true; }
@@ -1828,7 +1827,7 @@ function Compiler() {
     var values, number, str, ch;
     values = param.split(",");
     if (values.length === 0) { return false; }
-    for (var v=0; v<values.length; v++) {
+    for (var v = 0; v < values.length; v++) {
       str = values[v];
       if (str) {
         ch = str.substring(0, 1);
@@ -1857,11 +1856,11 @@ function Compiler() {
     }
     if (addr === -1) { pushWord(0x00); return false; }
     pushByte(opcode);
-    if (addr < (defaultCodePC-0x600)) {  // Backwards?
-      pushByte((0xff - ((defaultCodePC-0x600)-addr)) & 0xff);
+    if (addr < (defaultCodePC - 0x600)) {  // Backwards?
+      pushByte((0xff - ((defaultCodePC - 0x600) - addr)) & 0xff);
       return true;
     }
-    pushByte((addr-(defaultCodePC-0x600)-1) & 0xff);
+    pushByte((addr - (defaultCodePC - 0x600) - 1) & 0xff);
     return true;
   }
 
@@ -2113,7 +2112,7 @@ function Compiler() {
   // pushWord() - Push a word using pushByte twice
   function pushWord(value) {
     pushByte(value & 0xff);
-    pushByte((value>>8) & 0xff);
+    pushByte((value >> 8) & 0xff);
   }
 
   // hexDump() - Dump binary as hex to new window
@@ -2125,18 +2124,18 @@ function Compiler() {
     html += "<link href='style.css' rel='stylesheet' type='text/css' />";
     html += "<title>hexdump</title></head><body>";
     html += "<code>";
-    for (var x=0; x<codeLen; x++) {
-      if ((x&15) === 0) {
+    for (var x = 0; x < codeLen; x++) {
+      if ((x & 15) === 0) {
         html += "<br/> ";
-        n = (0x600+x);
-        html += num2hex(((n>>8)&0xff));
-        html += num2hex((n&0xff));
+        n = (0x600 + x);
+        html += num2hex(((n >> 8) & 0xff));
+        html += num2hex((n & 0xff));
         html += ": ";
       }
-      html += num2hex(memory.get(0x600+x));
-      if (x&1) { html += " "; }
+      html += num2hex(memory.get(0x600 + x));
+      if (x & 1) { html += " "; }
     }
-    if ((x&1)) { html += "-- [END]"; }
+    if ((x & 1)) { html += "-- [END]"; }
     html += "</code></body></html>";
     w.document.write(html);
     w.document.close();
@@ -2154,14 +2153,14 @@ function Compiler() {
 
 
 function addr2hex(addr) {
-  return num2hex((addr>>8)&0xff)+num2hex(addr&0xff);
+  return num2hex((addr >> 8) & 0xff) + num2hex(addr & 0xff);
 }
 
 function num2hex(nr) {
   var str = "0123456789abcdef";
-  var hi = ((nr&0xf0)>>4);
-  var lo = (nr&15);
-  return str.substring(hi, hi+1) + str.substring(lo, lo+1);
+  var hi = ((nr & 0xf0) >> 4);
+  var lo = (nr & 15);
+  return str.substring(hi, hi + 1) + str.substring(lo, lo + 1);
 }
 
 function load(file) {
