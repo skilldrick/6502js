@@ -263,6 +263,15 @@ function Emulator() {
     regP |= 1;
   }
 
+
+  function CLV() {
+    regP &= 0xbf;
+  }
+
+  function setOverflow() {
+    regP |= 0x40;
+  }
+
   function DEC(addr) {
     var value = memory.get(addr);
     value--;
@@ -285,6 +294,26 @@ function Emulator() {
     }
   }
 
+  function overflowSet() {
+    return regP & 0x40;
+  }
+
+  function decimalMode() {
+    return regP & 8;
+  }
+
+  function carrySet() {
+    return regP & 1;
+  }
+
+  function negativeSet() {
+    return regP & 0x80;
+  }
+
+  function zeroSet() {
+    return regP & 0x02;
+  }
+
   function doCompare(reg, val) {
     if (reg >= val) {
       SEC();
@@ -296,15 +325,15 @@ function Emulator() {
   }
 
   function testSBC(value) {
-    var vflag, tmp, w;
+    var tmp, w;
     if ((regA ^ value) & 0x80) {
-      vflag = 1;
+      setOverflow();
     } else {
-      vflag = 0;
+      CLV();
     }
 
-    if (regP & 8) {
-      tmp = 0xf + (regA & 0xf) - (value & 0xf) + (regP & 1);
+    if (decimalMode()) {
+      tmp = 0xf + (regA & 0xf) - (value & 0xf) + carrySet();
       if (tmp < 0x10) {
         w = 0;
         tmp -= 6;
@@ -315,21 +344,21 @@ function Emulator() {
       w += 0xf0 + (regA & 0xf0) - (value & 0xf0);
       if (w < 0x100) {
         CLC();
-        if ((regP & 0xbf) && w < 0x80) { regP &= 0xbf; }
+        if (overflowSet() && w < 0x80) { CLV(); }
         w -= 0x60;
       } else {
         SEC();
-        if ((regP & 0xbf) && w >= 0x180) { regP &= 0xbf; }
+        if (overflowSet() && w >= 0x180) { CLV(); }
       }
       w += tmp;
     } else {
-      w = 0xff + regA - value + (regP & 1);
+      w = 0xff + regA - value + carrySet();
       if (w < 0x100) {
         CLC();
-        if ((regP & 0xbf) && w < 0x80) { regP &= 0xbf; }
+        if (overflowSet() && w < 0x80) { CLV(); }
       } else {
         SEC();
-        if ((regP & 0xbf) && w >= 0x180) { regP &= 0xbf; }
+        if (overflowSet() && w >= 0x180) { CLV(); }
       }
     }
     regA = w & 0xff;
@@ -339,33 +368,33 @@ function Emulator() {
   function testADC(value) {
     var tmp;
     if ((regA ^ value) & 0x80) {
-      regP &= 0xbf;
+      CLV();
     } else {
-      regP |= 0x40;
+      setOverflow();
     }
 
-    if (regP & 8) {
-      tmp = (regA & 0xf) + (value & 0xf) + (regP & 1);
+    if (decimalMode()) {
+      tmp = (regA & 0xf) + (value & 0xf) + carrySet();
       if (tmp >= 10) {
         tmp = 0x10 | ((tmp + 6) & 0xf);
       }
       tmp += (regA & 0xf0) + (value & 0xf0);
       if (tmp >= 160) {
         SEC();
-        if ((regP & 0xbf) && tmp >= 0x180) { regP &= 0xbf; }
+        if (overflowSet() && tmp >= 0x180) { CLV(); }
         tmp += 0x60;
       } else {
         CLC();
-        if ((regP & 0xbf) && tmp < 0x80) { regP &= 0xbf; }
+        if (overflowSet() && tmp < 0x80) { CLV(); }
       }
     } else {
-      tmp = regA + value + (regP & 1);
+      tmp = regA + value + carrySet();
       if (tmp >= 0x100) {
         SEC();
-        if ((regP & 0xbf) && tmp >= 0x180) { regP &= 0xbf; }
+        if (overflowSet() && tmp >= 0x180) { CLV(); }
       } else {
         CLC();
-        if ((regP & 0xbf) && tmp < 0x80) { regP &= 0xbf; }
+        if (overflowSet() && tmp < 0x80) { CLV(); }
       }
     }
     regA = tmp & 0xff;
@@ -432,7 +461,7 @@ function Emulator() {
 
     i10: function () {
       var offset = popByte();
-      if ((regP & 0x80) === 0) { jumpBranch(offset); }
+      if (!negativeSet()) { jumpBranch(offset); }
       //BPL
     },
 
@@ -512,7 +541,7 @@ function Emulator() {
     },
 
     i26: function () {
-      var sf = (regP & 1);
+      var sf = carrySet();
       var addr = popByte();
       var value = memory.get(addr);
       setCarryFlagFromBit7(value);
@@ -533,7 +562,7 @@ function Emulator() {
     },
 
     i2a: function () {
-      var sf = (regP & 1);
+      var sf = carrySet();
       setCarryFlagFromBit7(regA);
       regA = regA << 1;
       regA |= sf;
@@ -552,7 +581,7 @@ function Emulator() {
     },
 
     i2e: function () {
-      var sf = regP & 1;
+      var sf = carrySet();
       var addr = popWord();
       var value = memory.get(addr);
       setCarryFlagFromBit7(value);
@@ -564,7 +593,7 @@ function Emulator() {
 
     i30: function () {
       var offset = popByte();
-      if (regP & 0x80) { jumpBranch(offset); }
+      if (negativeSet()) { jumpBranch(offset); }
       //BMI
     },
 
@@ -583,7 +612,7 @@ function Emulator() {
     },
 
     i36: function () {
-      var sf = regP & 1;
+      var sf = carrySet();
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
       setCarryFlagFromBit7(value);
@@ -612,7 +641,7 @@ function Emulator() {
     },
 
     i3e: function () {
-      var sf = regP & 1;
+      var sf = carrySet();
       var addr = popWord() + regX;
       var value = memory.get(addr);
       setCarryFlagFromBit7(value);
@@ -689,7 +718,7 @@ function Emulator() {
 
     i50: function () {
       var offset = popByte();
-      if ((regP & 0x40) === 0) { jumpBranch(offset); }
+      if (!overflowSet()) { jumpBranch(offset); }
       //BVC
     },
 
@@ -764,7 +793,7 @@ function Emulator() {
     },
 
     i66: function () {
-      var sf = regP & 1;
+      var sf = carrySet();
       var addr = popByte();
       var value = memory.get(addr);
       setCarryFlagFromBit0(value);
@@ -787,7 +816,7 @@ function Emulator() {
     },
 
     i6a: function () {
-      var sf = regP & 1;
+      var sf = carrySet();
       setCarryFlagFromBit0(regA);
       regA = regA >> 1;
       if (sf) { regA |= 0x80; }
@@ -807,7 +836,7 @@ function Emulator() {
     },
 
     i6e: function () {
-      var sf = regP & 1;
+      var sf = carrySet();
       var addr = popWord();
       var value = memory.get(addr);
       setCarryFlagFromBit0(value);
@@ -819,7 +848,7 @@ function Emulator() {
 
     i70: function () {
       var offset = popByte();
-      if (regP & 0x40) { jumpBranch(offset); }
+      if (overflowSet()) { jumpBranch(offset); }
       //BVS
     },
 
@@ -840,7 +869,7 @@ function Emulator() {
     },
 
     i76: function () {
-      var sf = (regP & 1);
+      var sf = carrySet();
       var addr = (popByte() + regX) & 0xff;
       var value = memory.get(addr);
       setCarryFlagFromBit0(value);
@@ -870,7 +899,7 @@ function Emulator() {
     },
 
     i7e: function () {
-      var sf = regP & 1;
+      var sf = carrySet();
       var addr = popWord() + regX;
       var value = memory.get(addr);
       setCarryFlagFromBit0(value);
@@ -931,7 +960,7 @@ function Emulator() {
 
     i90: function () {
       var offset = popByte();
-      if ((regP & 1) === 0) { jumpBranch(offset); }
+      if (!carrySet()) { jumpBranch(offset); }
       //BCC
     },
 
@@ -1045,7 +1074,7 @@ function Emulator() {
 
     ib0: function () {
       var offset = popByte();
-      if (regP & 1) { jumpBranch(offset); }
+      if (carrySet()) { jumpBranch(offset); }
       //BCS
     },
 
@@ -1072,8 +1101,7 @@ function Emulator() {
     },
 
     ib8: function () {
-      regP &= 0xbf;
-      //CLV
+      CLV();
     },
 
     ib9: function () {
@@ -1173,7 +1201,7 @@ function Emulator() {
 
     id0: function () {
       var offset = popByte();
-      if (!(regP & 2)) { jumpBranch(offset); }
+      if (!zeroSet()) { jumpBranch(offset); }
       //BNE
     },
 
@@ -1288,7 +1316,7 @@ function Emulator() {
 
     if0: function () {
       var offset = popByte();
-      if (regP & 2) { jumpBranch(offset); }
+      if (zeroSet()) { jumpBranch(offset); }
       //BEQ
     },
 
