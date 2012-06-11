@@ -23,7 +23,6 @@ var labels = new Labels();
 var compiler = new Compiler();
 // var emulator = new Emulator();
 var codeRunning = false;
-var xmlhttp;
 var executionIntervalId;
 var display = new Array(0x400);
 var debug = false;
@@ -86,6 +85,101 @@ function INC(addr) {
   setNVflags(value);
 }
 
+function jumpBranch(offset) {
+  if (offset > 0x7f) {
+    regPC = (regPC - (0x100 - offset));
+  } else {
+    regPC = (regPC + offset);
+  }
+}
+
+function doCompare(reg, val) {
+  //  if ((reg+val) > 0xff) regP |= 1; else regP &= 0xfe;
+  if (reg>=val) {
+    regP |= 1;
+  } else {
+    regP &= 0xfe; // Thanks, "Guest"
+  }
+  val = (reg-val);
+  setNVflags(val);
+}
+
+function testSBC(value) {
+  var vflag, tmp, w;
+  if ((regA ^ value) & 0x80) {
+    vflag = 1;
+  } else {
+    vflag = 0;
+  }
+
+  if (regP & 8) {
+    tmp = 0xf + (regA & 0xf) - (value & 0xf) + (regP&1);
+    if (tmp < 0x10) {
+      w = 0;
+      tmp -= 6;
+    } else {
+      w = 0x10;
+      tmp -= 0x10;
+    }
+    w += 0xf0 + (regA & 0xf0) - (value & 0xf0);
+    if (w < 0x100) {
+      regP &= 0xfe;
+      if ((regP&0xbf) && w<0x80) { regP&=0xbf; }
+      w -= 0x60;
+    } else {
+      regP |= 1;
+      if ((regP&0xbf) && w>=0x180) { regP&=0xbf; }
+    }
+    w += tmp;
+  } else {
+    w = 0xff + regA - value + (regP&1);
+    if (w<0x100) {
+      regP &= 0xfe;
+      if ((regP&0xbf) && w<0x80) { regP&=0xbf; }
+    } else {
+      regP |= 1;
+      if ((regP&0xbf) && w>= 0x180) { regP&=0xbf; }
+    }
+  }
+  regA = w & 0xff;
+  setNVflagsForRegA();
+}
+
+function testADC(value) {
+  var tmp;
+  if ((regA ^ value) & 0x80) {
+    regP &= 0xbf;
+  } else {
+    regP |= 0x40;
+  }
+
+  if (regP & 8) {
+    tmp = (regA & 0xf) + (value & 0xf) + (regP&1);
+    if (tmp >= 10) {
+      tmp = 0x10 | ((tmp+6)&0xf);
+    }
+    tmp += (regA & 0xf0) + (value & 0xf0);
+    if (tmp >= 160) {
+      regP |= 1;
+      if ((regP&0xbf) && tmp >= 0x180) { regP &= 0xbf; }
+      tmp += 0x60;
+    } else {
+      regP &= 0xfe;
+      if ((regP&0xbf) && tmp<0x80) { regP &= 0xbf; }
+    }
+  } else {
+    tmp = regA + value + (regP&1);
+    if (tmp >= 0x100) {
+      regP |= 1;
+      if ((regP&0xbf) && tmp>=0x180) { regP &= 0xbf; }
+    } else {
+      regP &= 0xfe;
+      if ((regP&0xbf) && tmp<0x80) { regP &= 0xbf; }
+    }
+  }
+  regA = tmp & 0xff;
+  setNVflagsForRegA();
+}
 var instructions = {
 
   i00: function () {
@@ -1060,102 +1154,6 @@ var instructions = {
   }
 };
 
-function jumpBranch(offset) {
-  if (offset > 0x7f) {
-    regPC = (regPC - (0x100 - offset));
-  } else {
-    regPC = (regPC + offset);
-  }
-}
-
-function doCompare(reg, val) {
-  //  if ((reg+val) > 0xff) regP |= 1; else regP &= 0xfe;
-  if (reg>=val) {
-    regP |= 1;
-  } else {
-    regP &= 0xfe; // Thanks, "Guest"
-  }
-  val = (reg-val);
-  setNVflags(val);
-}
-
-function testSBC(value) {
-  var vflag, tmp, w;
-  if ((regA ^ value) & 0x80) {
-    vflag = 1;
-  } else {
-    vflag = 0;
-  }
-
-  if (regP & 8) {
-    tmp = 0xf + (regA & 0xf) - (value & 0xf) + (regP&1);
-    if (tmp < 0x10) {
-      w = 0;
-      tmp -= 6;
-    } else {
-      w = 0x10;
-      tmp -= 0x10;
-    }
-    w += 0xf0 + (regA & 0xf0) - (value & 0xf0);
-    if (w < 0x100) {
-      regP &= 0xfe;
-      if ((regP&0xbf) && w<0x80) { regP&=0xbf; }
-      w -= 0x60;
-    } else {
-      regP |= 1;
-      if ((regP&0xbf) && w>=0x180) { regP&=0xbf; }
-    }
-    w += tmp;
-  } else {
-    w = 0xff + regA - value + (regP&1);
-    if (w<0x100) {
-      regP &= 0xfe;
-      if ((regP&0xbf) && w<0x80) { regP&=0xbf; }
-    } else {
-      regP |= 1;
-      if ((regP&0xbf) && w>= 0x180) { regP&=0xbf; }
-    }
-  }
-  regA = w & 0xff;
-  setNVflagsForRegA();
-}
-
-function testADC(value) {
-  var tmp;
-  if ((regA ^ value) & 0x80) {
-    regP &= 0xbf;
-  } else {
-    regP |= 0x40;
-  }
-
-  if (regP & 8) {
-    tmp = (regA & 0xf) + (value & 0xf) + (regP&1);
-    if (tmp >= 10) {
-      tmp = 0x10 | ((tmp+6)&0xf);
-    }
-    tmp += (regA & 0xf0) + (value & 0xf0);
-    if (tmp >= 160) {
-      regP |= 1;
-      if ((regP&0xbf) && tmp >= 0x180) { regP &= 0xbf; }
-      tmp += 0x60;
-    } else {
-      regP &= 0xfe;
-      if ((regP&0xbf) && tmp<0x80) { regP &= 0xbf; }
-    }
-  } else {
-    tmp = regA + value + (regP&1);
-    if (tmp >= 0x100) {
-      regP |= 1;
-      if ((regP&0xbf) && tmp>=0x180) { regP &= 0xbf; }
-    } else {
-      regP &= 0xfe;
-      if ((regP&0xbf) && tmp<0x80) { regP &= 0xbf; }
-    }
-  }
-  regA = tmp & 0xff;
-  setNVflagsForRegA();
-}
-
 
 function executeNextInstruction() {
   var instructionName = popByte().toString(16).toLowerCase();
@@ -1376,22 +1374,13 @@ function disableButtons() {
 function Load(file) {
   reset();
   disableButtons();
+  stopDebugger();
   $('#code').val("Loading, please wait..");
   $('#compileButton').attr('disabled', true);
-  xmlhttp = new XMLHttpRequest();
-  xmlhttp.onreadystatechange = FileLoaded;
-  xmlhttp.open("GET", "/examples/" + file);
-  xmlhttp.send(null);
-  stopDebugger();
-}
-
-function FileLoaded() {
-  if (xmlhttp.readyState === 4) {
-    if (xmlhttp.status === 200) {
-      $('#code').val(xmlhttp.responseText);
-      $('#compileButton').attr('disabled', false);
-    }
-  }
+  $.get("/examples/" + file, function (data) {
+    $('#code').val(data);
+    $('#compileButton').attr('disabled', false);
+  });
 }
 
 /*
@@ -2170,13 +2159,13 @@ function runBinary() {
     $('#fileSelect').attr('disabled', true);
     $('#hexdumpButton').attr('disabled', true);
     codeRunning = true;
-    executionIntervalId = setInterval(multiexecute, 30);
+    executionIntervalId = setInterval(multiExecute, 30);
     $('#stepButton').attr('disabled', !debug);
     $('#gotoButton').attr('disabled', !debug);
   }
 }
 
-function multiexecute() {
+function multiExecute() {
   if (! debug) {
     for (var w=0; w<200; w++) {
       execute();
@@ -2208,13 +2197,8 @@ function execute() {
   }
 }
 
-
 function setRandomByte() {
   memory[0xfe] = Math.floor(Math.random()*256);
-}
-
-function updateDisplayPixel(addr) {
-  display[addr-0x200].background = palette[memory[addr] & 0x0f];
 }
 
 
@@ -2231,6 +2215,11 @@ function updateDisplayFull() {
     }
   }
 }
+
+function updateDisplayPixel(addr) {
+  display[addr-0x200].background = palette[memory[addr] & 0x0f];
+}
+
 
 $(document).ready(function () {
   $('#compileButton').click(function () {
