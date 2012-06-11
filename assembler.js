@@ -113,7 +113,7 @@ function UI() {
 
 
 function Display() {
-  var displayArray = new Array(0x400);
+  var displayArray = [];
   var palette = [
     "#000000", "#ffffff", "#880000", "#aaffee",
     "#cc44cc", "#00cc55", "#0000aa", "#eeee77",
@@ -141,35 +141,21 @@ function Display() {
   function reset() {
     for (var y=0; y<32; y++) {
       for (var x=0; x<32; x++) {
-        displayArray[y*32+x] = $('#' + id(x, y))[0].style;
-        displayArray[y*32+x].background = "#000000";
-      }
-    }
-  }
-
-  function setPixel(addr, colour) {
-    displayArray[addr].background = palette[colour & 0x0f];
-  }
-
-  // update() - Simply redraws the entire display according to memory
-  // The colors are supposed to be identical with the C64's palette.
-  function update() {
-    for (var y=0; y<32; y++) {
-      for (var x=0; x<32; x++) {
-        updatePixel(((y<<5)+x) + 0x200);
+        displayArray[y*32+x] = $('#' + id(x, y));
+        displayArray[y*32+x].css('background', '#000000');
       }
     }
   }
 
   function updatePixel(addr) {
-    display.setPixel(addr-0x200, memory.get(addr));
+    var colour = palette[memory.get(addr) & 0x0f];
+    displayArray[addr-0x200].css('background', colour);
   }
 
   return {
     initialize: initialize,
     reset: reset,
-    setPixel: setPixel,
-    update: update
+    updatePixel: updatePixel
   };
 }
 
@@ -189,7 +175,7 @@ function Memory() {
   function storeByte(addr, value) {
     set(addr, value & 0xff);
     if ((addr >= 0x200) && (addr<=0x5ff)) {
-      display.setPixel(addr-0x200, get(addr));
+      display.updatePixel(addr);
     }
   }
 
@@ -1745,7 +1731,6 @@ function Compiler() {
       return;
     }
 
-    display.update();
     message("Code compiled successfully, " + codeLen + " bytes.");
   }
 
@@ -2179,7 +2164,7 @@ function num2hex(nr) {
   return str.substring(hi, hi+1) + str.substring(lo, lo+1);
 }
 
-function Load(file) {
+function load(file) {
   emulator.reset();
   ui.disableButtons();
   emulator.stopDebugger();
