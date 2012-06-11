@@ -9,115 +9,57 @@
 *
 */
 
-var MAX_MEM = ((32*32)-1);
 var memory = Memory();
 var labels = Labels();
 var compiler = Compiler();
 var emulator = Emulator();
-var display = new Array(0x400);
-var palette = [
-  "#000000", "#ffffff", "#880000", "#aaffee",
-  "#cc44cc", "#00cc55", "#0000aa", "#eeee77",
-  "#dd8855", "#664400", "#ff7777", "#333333",
-  "#777777", "#aaff66", "#0088ff", "#bbbbbb"
-];
+var display = Display();
 
-function addr2hex(addr) {
-  return num2hex((addr>>8)&0xff)+num2hex(addr&0xff);
-}
+function Display() {
+  var displayArray = new Array(0x400);
+  var palette = [
+    "#000000", "#ffffff", "#880000", "#aaffee",
+    "#cc44cc", "#00cc55", "#0000aa", "#eeee77",
+    "#dd8855", "#664400", "#ff7777", "#333333",
+    "#777777", "#aaff66", "#0088ff", "#bbbbbb"
+  ];
 
-function num2hex(nr) {
-  var str = "0123456789abcdef";
-  var hi = ((nr&0xf0)>>4);
-  var lo = (nr&15);
-  return str.substring(hi, hi+1) + str.substring(lo, lo+1);
-}
-
-function initialize() {
-  // Initialize everything.
-
-  $('#compileButton').attr('disabled', false);
-  $('#runButton').attr('disabled', true);
-  $('#hexdumpButton').attr('disabled', true);
-  $('#fileSelect').attr('disabled', false);
-  $('#watch').attr('checked', false);
-  $('#stepButton').attr('disabled', true);
-  $('#gotoButton').attr('disabled', true);
-
-  // Paint the "display"
-
-  var html = '<table class="screen">';
-  for (var y=0; y<32; y++) {
-    html += "<tr>";
-    for (var x=0; x<32; x++) {
-      html += '<td class="screen" id="x' + x + 'y' + y + '"></td>';
+  function reset() {
+    for (var y=0; y<32; y++) {
+      for (var x=0; x<32; x++) {
+        displayArray[y*32+x] = $('#x'+x+'y'+y)[0].style;
+        displayArray[y*32+x].background = "#000000";
+      }
     }
-    html += "</tr>";
   }
-  html += "</table>";
-  $('#screen').html(html);
 
-  // Reset everything
-
-  emulator.reset();
-}
-
-/*
-*  keyPress() - Store keycode in ZP $ff
-*
-*/
-
-function keyPress(e) {
-  var value;
-  if (typeof window.event !== "undefined") {
-    e = window.event;
+  function setPixel(addr, colour) {
+    displayArray[addr].background = palette[colour & 0x0f];
   }
-  if (e.type === "keypress") {
-    value = e.which;
-    memory.storeByte(0xff, value);
+
+  /*
+  *  update() - Simply redraws the entire display according to memory
+  *  The colors are supposed to be identical with the C64's palette.
+  */
+
+  function update() {
+    for (var y=0; y<32; y++) {
+      for (var x=0; x<32; x++) {
+        updatePixel(((y<<5)+x) + 0x200);
+      }
+    }
   }
+
+  function updatePixel(addr) {
+    display.setPixel(addr-0x200, memory.get(addr));
+  }
+
+  return {
+    reset: reset,
+    setPixel: setPixel,
+    update: update
+  };
 }
-
-/*
-*  disableButtons() - Disables the Run and Debug buttons when text is
-*                     altered in the code editor
-*
-*/
-
-function disableButtons() {
-  $('#compileButton').attr('disabled', false);
-  $('#runButton').attr('disabled', true);
-  $('#hexdumpButton').attr('disabled', true);
-  $('#fileSelect').attr('disabled', false);
-  $('#runButton').val('Run');
-
-  emulator.stop();
-  $('#code').focus();
-  $('#stepButton').attr('disabled', true);
-  $('#gotoButton').attr('disabled', true);
-}
-
-function Load(file) {
-  emulator.reset();
-  disableButtons();
-  emulator.stopDebugger();
-  $('#code').val("Loading, please wait..");
-  $('#compileButton').attr('disabled', true);
-  $.get("/examples/" + file, function (data) {
-    $('#code').val(data);
-    $('#compileButton').attr('disabled', false);
-  });
-}
-
-/*
-*  message() - Prints text in the message window
-*
-*/
-
-function message(text) {
-  $('#messages').append(text + '<br>').scrollTop(10000);
-}
-
 
 function Memory() {
   var memArray = new Array(0x600);
@@ -132,20 +74,29 @@ function Memory() {
 
   /*
   * storeByte() - Poke a byte, don't touch any registers
-  *
   */
 
   function storeByte(addr, value) {
-    memory.set(addr, value & 0xff);
+    set(addr, value & 0xff);
     if ((addr >= 0x200) && (addr<=0x5ff)) {
-      display[addr-0x200].background = palette[memory.get(addr) & 0x0f];
+      display.setPixel(addr-0x200, get(addr));
     }
+  }
+
+  /*
+  *  storeKeypress() - Store keycode in ZP $ff
+  */
+
+  function storeKeypress(e) {
+    value = e.which;
+    memory.storeByte(0xff, value);
   }
 
   return {
     set: set,
     get: get,
-    storeByte: storeByte
+    storeByte: storeByte,
+    storeKeypress: storeKeypress
   };
 }
 
@@ -1306,7 +1257,6 @@ function Emulator() {
 
   /*
   * popByte() - Pops a byte
-  *
   */
 
   function popByte() {
@@ -1315,7 +1265,6 @@ function Emulator() {
 
   /*
   * popWord() - Pops a word using popByte() twice
-  *
   */
 
   function popWord() {
@@ -1324,7 +1273,6 @@ function Emulator() {
 
   /*
   *  runBinary() - Executes the compiled code
-  *
   */
 
   function runBinary() {
@@ -1375,7 +1323,6 @@ function Emulator() {
   /*
   *  execute() - Executes one instruction.
   *              This is the main part of the CPU emulator.
-  *
   */
 
   function execute() {
@@ -1401,24 +1348,6 @@ function Emulator() {
 
 
   /*
-  *  updateDisplayFull() - Simply redraws the entire display according to memory
-  *  The colors are supposed to be identical with the C64's palette.
-  *
-  */
-
-  function updateDisplayFull() {
-    for (var y=0; y<32; y++) {
-      for (var x=0; x<32; x++) {
-        updateDisplayPixel(((y<<5)+x) + 0x200);
-      }
-    }
-  }
-
-  function updateDisplayPixel(addr) {
-    display[addr-0x200].background = palette[memory.get(addr) & 0x0f];
-  }
-
-  /*
   *  debugExec() - Execute one instruction and print values
   */
 
@@ -1438,7 +1367,6 @@ function Emulator() {
 
   /*
   *  gotoAddr() - Set PC to address (or address of label)
-  *
   */
 
   function gotoAddr() {
@@ -1496,16 +1424,10 @@ function Emulator() {
 
   /*
   *  reset() - Reset CPU and memory.
-  *
   */
 
   function reset() {
-    for (var y=0; y<32; y++) {
-      for (var x=0; x<32; x++) {
-        display[y*32+x] = $('#x'+x+'y'+y)[0].style;
-        display[y*32+x].background = "#000000";
-      }
-    }
+    display.reset();
     for (var i=0; i<0x600; i++) { // clear ZP, stack and screen
       memory.set(i, 0x00);
     }
@@ -1523,7 +1445,6 @@ function Emulator() {
 
   return {
     runBinary: runBinary,
-    updateDisplayFull: updateDisplayFull,
     toggleDebug: toggleDebug,
     debugExec: debugExec,
     gotoAddr: gotoAddr,
@@ -1777,7 +1698,7 @@ function Compiler() {
       return;
     }
 
-    emulator.updateDisplayFull();
+    display.update();
     message("Code compiled successfully, " + codeLen + " bytes.");
   }
 
@@ -1898,7 +1819,6 @@ function Compiler() {
 
   /*
   *  checkBranch() - Commom branch function for all branches (BCC, BCS, BEQ, BNE..)
-  *
   */
 
   function checkBranch(param, opcode) {
@@ -1921,7 +1841,6 @@ function Compiler() {
 
   /*
   * checkImmediate() - Check if param is immediate and push value
-  *
   */
 
   function checkImmediate(param, opcode) {
@@ -1968,7 +1887,6 @@ function Compiler() {
 
   /*
   * checkIndirectX() - Check if param is indirect X and push value
-  *
   */
 
   function checkIndirectX(param, opcode) {
@@ -1986,7 +1904,6 @@ function Compiler() {
 
   /*
   * checkIndirectY() - Check if param is indirect Y and push value
-  *
   */
 
   function checkIndirectY(param, opcode) {
@@ -2004,7 +1921,6 @@ function Compiler() {
 
   /*
   *  checkSingle() - Single-byte opcodes
-  *
   */
 
   function checkSingle(param, opcode) {
@@ -2016,7 +1932,6 @@ function Compiler() {
 
   /*
   *  checkZeroPage() - Check if param is ZP and push value
-  *
   */
 
   function checkZeroPage(param, opcode) {
@@ -2041,7 +1956,6 @@ function Compiler() {
 
   /*
   *  checkAbsoluteX() - Check if param is ABSX and push value
-  *
   */
 
   function checkAbsoluteX(param, opcode) {
@@ -2075,7 +1989,6 @@ function Compiler() {
 
   /*
   *  checkAbsoluteY() - Check if param is ABSY and push value
-  *
   */
 
   function checkAbsoluteY(param, opcode) {
@@ -2110,7 +2023,6 @@ function Compiler() {
 
   /*
   *  checkZeroPageX() - Check if param is ZPX and push value
-  *
   */
 
   function checkZeroPageX(param, opcode) {
@@ -2159,7 +2071,6 @@ function Compiler() {
 
   /*
   *  checkAbsolute() - Check if param is ABS and push value
-  *
   */
 
   function checkAbsolute(param, opcode) {
@@ -2195,7 +2106,6 @@ function Compiler() {
 
   /*
   * pushByte() - Push byte to memory
-  *
   */
 
   function pushByte(value) {
@@ -2206,7 +2116,6 @@ function Compiler() {
 
   /*
   * pushWord() - Push a word using pushByte twice
-  *
   */
 
   function pushWord(value) {
@@ -2216,7 +2125,6 @@ function Compiler() {
 
   /*
   *  hexDump() - Dump binary as hex to new window
-  *
   */
 
   function hexdump() {
@@ -2255,6 +2163,84 @@ function Compiler() {
 }
 
 
+function addr2hex(addr) {
+  return num2hex((addr>>8)&0xff)+num2hex(addr&0xff);
+}
+
+function num2hex(nr) {
+  var str = "0123456789abcdef";
+  var hi = ((nr&0xf0)>>4);
+  var lo = (nr&15);
+  return str.substring(hi, hi+1) + str.substring(lo, lo+1);
+}
+
+function initialize() {
+  // Initialize everything.
+
+  $('#compileButton').attr('disabled', false);
+  $('#runButton').attr('disabled', true);
+  $('#hexdumpButton').attr('disabled', true);
+  $('#fileSelect').attr('disabled', false);
+  $('#watch').attr('checked', false);
+  $('#stepButton').attr('disabled', true);
+  $('#gotoButton').attr('disabled', true);
+
+  var html = '<table class="screen">';
+  for (var y=0; y<32; y++) {
+    html += "<tr>";
+    for (var x=0; x<32; x++) {
+      html += '<td class="screen" id="x' + x + 'y' + y + '"></td>';
+    }
+    html += "</tr>";
+  }
+  html += "</table>";
+  $('#screen').html(html);
+
+  // Reset everything
+
+  emulator.reset();
+}
+
+/*
+*  disableButtons() - Disables the Run and Debug buttons when text is
+*                     altered in the code editor
+*/
+
+function disableButtons() {
+  $('#compileButton').attr('disabled', false);
+  $('#runButton').attr('disabled', true);
+  $('#hexdumpButton').attr('disabled', true);
+  $('#fileSelect').attr('disabled', false);
+  $('#runButton').val('Run');
+
+  emulator.stop();
+  $('#code').focus();
+  $('#stepButton').attr('disabled', true);
+  $('#gotoButton').attr('disabled', true);
+}
+
+function Load(file) {
+  emulator.reset();
+  disableButtons();
+  emulator.stopDebugger();
+  $('#code').val("Loading, please wait..");
+  $('#compileButton').attr('disabled', true);
+  $.get("/examples/" + file, function (data) {
+    $('#code').val(data);
+    $('#compileButton').attr('disabled', false);
+  });
+}
+
+/*
+*  message() - Prints text in the message window
+*/
+
+function message(text) {
+  $('#messages').append(text + '<br>').scrollTop(10000);
+}
+
+
+
 initialize();
 
 $(document).ready(function () {
@@ -2268,5 +2254,5 @@ $(document).ready(function () {
   $('#stepButton').click(emulator.debugExec);
   $('#gotoButton').click(emulator.gotoAddr);
   $('#code').keypress(disableButtons);
-  $(document).keypress(keyPress);
+  $(document).keypress(memory.storeKeypress);
 });
