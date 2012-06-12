@@ -1,65 +1,53 @@
 <html>
-<head>
-<link href="style.css" rel="stylesheet" type="text/css" />
-<title>6502asm.com - 6502 compatible assembler and emulator in javascript</title>
-<meta name="keywords" content="6502, 6510, assembler, asm, compiler, assembly, emulator, simulator, virtual machine, vm">
-<meta name="description" content="6502asm.com - Program and run 6502 assembly in your browser!">
-<meta name="robots" content="follow,index">
-</head>
-<body>
-<center>
-<font class="title">6502asm.com</font> <font class="version">v1.5</font><br/>
-<font class="reloaded">RELOADED .::</font>
+  <head>
+    <link href="style.css" rel="stylesheet" type="text/css" />
+    <title>6502asm.com - 6502 compatible assembler and emulator in javascript</title>
+    <meta name="keywords" content="6502, 6510, assembler, asm, compiler, assembly, emulator, simulator, virtual machine, vm">
+    <meta name="description" content="6502asm.com - Program and run 6502 assembly in your browser!">
+    <meta name="robots" content="follow,index">
+  </head>
+  <body>
+    <center>
+      <font class="title">6502asm.com</font> <font class="version">v1.5</font><br/>
+      <font class="reloaded">RELOADED .::</font>
 
 
-<table><tr>
-<td width="50px" valign="top">
-<input type="button" value="Compile" id="compileButton" />
-<input type="button" value="Run" id="runButton" />
-<input type="button" value="Reset" id="resetButton" />
-<input type="button" value="Hexdump" id="hexdumpButton" />
-<input type="button" value="Help" id="helpButton" onClick="window.open('help.html', 'helpwin', 'width=512,height=320,resizable=yes,scrollbars=yes,toolbar=no,location=no,menubar=no,status=no' );" />
-<select id="fileSelect" onChange="Load(this.options[this.selectedIndex].value)">
-  <option>Examples</option>
-  <option>alive.asm</option>
-  <option>byterun.asm</option>
-  <option>colors.asm</option>
-  <option>demoscene.asm</option>
-  <option>disco.asm</option>
-  <option>fullscreenlogo.asm</option>
-  <option>random.asm</option>
-  <option>spacer.asm</option>
-  <option>starfield2d.asm</option>
-</select>
+      <div class='widget'>
+      <table><tr>
+          <td width="50px" valign="top">
+            <input type="button" value="Compile" class="compileButton" />
+            <input type="button" value="Run" class="runButton" />
+            <input type="button" value="Reset" class="resetButton" />
+            <input type="button" value="Hexdump" class="hexdumpButton" />
+          </td>
+          <td>
+            <table align="center">
+              <tr>
+                <td valign="top">
+                  <textarea class="code"></textarea>
+                </td>
+                <td valign="top">
+                  <div class="screen"></div>
+                  <div class="dbugWin">
+                    <input type="checkbox" class="watch" /><font class="version">Real-time debug</font><br />
+                    <div class="minidebugger">
+                      <br />
+                      A=$00 X=$00 Y=$00<br />
+                      P=$00 SP=$0000 PC=$0000<br />
+                    </div>
+                    <input type="button" value="Step" class="stepButton" />
+                    <input type="button" value="Jump to..." class="gotoButton" />
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr></table>
+        <div class="messages"></div>
+      </div>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+      <script src="assembler.js"></script>
 
-</td>
-<td>
-<table align="center">
-<tr>
-  <td valign="top">
-    <textarea class="code" id="code"></textarea>
-  </td>
-  <td valign="top">
-    <div class="screen" id="screen"></div>
-   <div class="dbugWin">
-    <input type="checkbox" id="watch" /><font class="version">Real-time debug</font><br />
-    <div class="minidebugger" id="md">
-      <br />
-      A=$00 X=$00 Y=$00<br />
-      P=$00 SP=$0000 PC=$0000<br />
-    </div>
-    <input type="button" value="Step" id="stepButton" />
-    <input type="button" value="Jump to.." id="gotoButton" />
-   </div>
-  </td>
-</tr>
-</table>
-</td>
-</tr></table>
-<div class="messages" id="messages"></div>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
-<script src="assembler.js"></script>
-
-</body>
-</html>
+    </body>
+  </html>
 
