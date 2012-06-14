@@ -1,5 +1,8 @@
 BODY {
   background-color: #d0c8b8;
+  text-align: center;
+  width: 690px;
+  margin: auto;
 }
 
 FONT.title {
