@@ -28,6 +28,7 @@ function EmulatorWidget(node) {
       compiler.compileCode();
     });
     $node.find('.runButton').click(emulator.runBinary);
+    $node.find('.runButton').click(emulator.stopDebugger);
     $node.find('.resetButton').click(emulator.reset);
     $node.find('.resetButton').click(ui.reset);
     $node.find('.hexdumpButton').click(compiler.hexdump);
