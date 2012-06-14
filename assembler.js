@@ -11,13 +11,13 @@
 
 
 function EmulatorWidget(node) {
+  var $node = $(node);
   var ui = UI();
   var display = Display();
   var memory = Memory();
   var labels = Labels();
   var emulator = Emulator();
   var compiler = Compiler();
-  var $node = $(node);
 
   function initialize() {
     ui.initialize();
@@ -29,95 +29,107 @@ function EmulatorWidget(node) {
     });
     $node.find('.runButton').click(emulator.runBinary);
     $node.find('.resetButton').click(emulator.reset);
+    $node.find('.resetButton').click(ui.reset);
     $node.find('.hexdumpButton').click(compiler.hexdump);
-    $node.find('.watch').change(emulator.toggleDebug);
+    $node.find('.debug').change(function () {
+      var debug = $(this).is(':checked');
+      if (debug) {
+        ui.debugOn();
+        emulator.enableDebugger();
+      } else {
+        ui.debugOff();
+        emulator.stopDebugger();
+      }
+    });
     $node.find('.stepButton').click(emulator.debugExec);
     $node.find('.gotoButton').click(emulator.gotoAddr);
     $node.find('.code').keypress(emulator.stop);
-    $node.find('.code').keypress(ui.disableButtons);
+    $node.find('.code').keypress(ui.initialize);
     $(document).keypress(memory.storeKeypress);
   }
 
   function UI() {
-    //TODO: Make this more state machine-y
-    function initialize() {
-      $node.find('.compileButton').attr('disabled', false);
-      $node.find('.runButton').attr('disabled', true);
-      $node.find('.hexdumpButton').attr('disabled', true);
-      $node.find('.fileSelect').attr('disabled', false);
-      $node.find('.watch').attr('checked', false);
-      $node.find('.watch').attr('disabled', true);
-      $node.find('.stepButton').attr('disabled', true);
-      $node.find('.gotoButton').attr('disabled', true);
+    var currentState;
+
+    var start = {
+      compile: true,
+      run: [false, 'Run'],
+      reset: false,
+      hexdump: true,
+      debug: [false, false]
+    };
+    var compiled = {
+      compile: false,
+      run: [true, 'Run'],
+      reset: true,
+      hexdump: true,
+      debug: [false, false],
+    }
+    var running = {
+      compile: false,
+      run: [true, 'Stop'],
+      reset: true,
+      hexdump: false,
+      debug: [true, false],
+    }
+    var debugging = {
+      compile: false,
+      run: [true, 'Stop'],
+      reset: true,
+      hexdump: false,
+      debug: [true, true],
     }
 
-    function pause() {
-      $node.find('.runButton').val('Run');
-      $node.find('.hexdumpButton').attr('disabled', false);
-      $node.find('.fileSelect').attr('disabled', false);
-      $node.find('.watch').attr('disabled', true);
-      $node.find('.watch').attr('checked', false);
+    function setState(state) {
+      $node.find('.compileButton').attr('disabled', !state.compile);
+      $node.find('.runButton').attr('disabled', !state.run[0]);
+      $node.find('.runButton').val(state.run[1]);
+      $node.find('.resetButton').attr('disabled', !state.reset);
+      $node.find('.hexdumpButton').attr('disabled', !state.hexdump);
+      $node.find('.debug').attr('disabled', !state.debug[0]);
+      $node.find('.debug').attr('checked', state.debug[1]);
+      $node.find('.stepButton').attr('disabled', !state.debug[1]);
+      $node.find('.gotoButton').attr('disabled', !state.debug[1]);
+      currentState = state;
+    }
+
+    function initialize() {
+      console.log(start);
+      setState(start);
     }
 
     function play() {
-      $node.find('.runButton').val('Stop');
-      $node.find('.fileSelect').attr('disabled', true);
-      $node.find('.hexdumpButton').attr('disabled', true);
-      $node.find('.watch').attr('disabled', false);
+      setState(running);
     }
 
     function stop() {
-      $node.find('.runButton').val('Run');
-      $node.find('.fileSelect').attr('disabled', false);
-      $node.find('.hexdumpButton').attr('disabled', false);
-      $node.find('.watch').attr('disabled', true);
+      setState(compiled);
     }
 
-    function setDebug(debug) {
-      $node.find('.stepButton').attr('disabled', !debug);
-      $node.find('.gotoButton').attr('disabled', !debug);
+    function debugOn() {
+      setState(debugging);
     }
 
-    function resetDebug() {
-      $node.find('.watch').attr('checked', false);
-      setDebug(false);
+    function debugOff() {
+      setState(running);
     }
 
     function compileSuccess() {
-      $node.find('.runButton').attr('disabled', false);
-      $node.find('.hexdumpButton').attr('disabled', false);
-      $node.find('.compileButton').attr('disabled', true);
-      $node.find('.fileSelect').attr('disabled', false);
+      setState(compiled);
     }
 
-    function compileFail() {
-      $node.find('.runButton').attr('disabled', true);
-      $node.find('.compileButton').attr('disabled', false);
-      $node.find('.fileSelect').attr('disabled', false);
-    }
-
-    function disableButtons() {
-      $node.find('.compileButton').attr('disabled', false);
-      $node.find('.runButton').attr('disabled', true);
-      $node.find('.hexdumpButton').attr('disabled', true);
-      $node.find('.fileSelect').attr('disabled', false);
-      $node.find('.runButton').val('Run');
-
-      $node.find('.code').focus();
-      $node.find('.stepButton').attr('disabled', true);
-      $node.find('.gotoButton').attr('disabled', true);
+    function reset() {
+      setState(currentState == running ? running : compiled);
     }
 
     return {
       initialize: initialize,
-      pause: pause,
       play: play,
       stop: stop,
-      setDebug: setDebug,
+      reset: reset,
       compileSuccess: compileSuccess,
-      compileFail: compileFail,
-      disableButtons: disableButtons,
-      resetDebug: resetDebug
+      debugOn: debugOn,
+      debugOff: debugOff
     };
   }
 
@@ -1411,12 +1423,9 @@ function EmulatorWidget(node) {
       if (codeRunning) {
         // Switch OFF everything
         stop();
-        ui.pause();
-        toggleDebug();
-        stopDebugger();
+        ui.stop();
       } else {
         ui.play();
-        ui.setDebug(debug);
         codeRunning = true;
         executeId = setInterval(multiExecute, 30);
       }
@@ -1507,28 +1516,12 @@ function EmulatorWidget(node) {
 
     function stopDebugger() {
       debug = false;
-      ui.setDebug(debug);
-      ui.resetDebug();
     }
 
     function enableDebugger() {
       debug = true;
       if (codeRunning) {
         updateDebugInfo();
-        ui.setDebug(debug);
-      }
-    }
-
-    function toggleDebug(e) {
-      if (e) { //if this is a click handler
-        debug = $(this).is(':checked');
-      } else {
-        debug = !debug;
-      }
-      if (debug) {
-        enableDebugger();
-      } else {
-        stopDebugger();
       }
     }
 
@@ -1552,7 +1545,8 @@ function EmulatorWidget(node) {
 
     return {
       runBinary: runBinary,
-      toggleDebug: toggleDebug,
+      enableDebugger: enableDebugger,
+      stopDebugger: stopDebugger,
       debugExec: debugExec,
       gotoAddr: gotoAddr,
       reset: reset,
@@ -1775,7 +1769,7 @@ function EmulatorWidget(node) {
       } else {
         var str = lines[i].replace("<", "&lt;").replace(">", "&gt;");
         message("<b>Syntax error line " + (i + 1) + ": " + str + "</b>");
-        ui.compileFail();
+        ui.reset();
         return;
       }
 
@@ -2224,4 +2218,3 @@ function EmulatorWidget(node) {
 $(document).ready(function () {
   EmulatorWidget('.widget');
 });
-
