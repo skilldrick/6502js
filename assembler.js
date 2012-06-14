@@ -130,36 +130,28 @@ function EmulatorWidget(node) {
       "#dd8855", "#664400", "#ff7777", "#333333",
       "#777777", "#aaff66", "#0088ff", "#bbbbbb"
     ];
-
-    function makeClass(x, y) {
-      return "x" + x + "y" + y;
-    }
+    var ctx;
+    var width;
+    var height;
 
     function initialize() {
-      var html = '<table class="screen">';
-      for (var y = 0; y < 32; y++) {
-        html += "<tr>";
-        for (var x = 0; x < 32; x++) {
-          html += '<td class="screen ' + makeClass(x, y) + '"></td>';
-        }
-        html += "</tr>";
-      }
-      html += "</table>";
-      $node.find('.screen').html(html);
+      var canvas = $node.find('.screen')[0];
+      width = canvas.width;
+      height = canvas.height;
+      ctx = canvas.getContext('2d');
+      reset();
     }
 
     function reset() {
-      for (var y = 0; y < 32; y++) {
-        for (var x = 0; x < 32; x++) {
-          displayArray[y * 32 + x] = $node.find('.' + makeClass(x, y));
-          displayArray[y * 32 + x].css('background', '#000000');
-        }
-      }
+      ctx.fillStyle = "black";
+      ctx.fillRect(0, 0, width, height);
     }
 
     function updatePixel(addr) {
-      var colour = palette[memory.get(addr) & 0x0f];
-      displayArray[addr - 0x200].css('background', colour);
+      ctx.fillStyle = palette[memory.get(addr) & 0x0f];
+      var y = Math.floor((addr - 0x200) / 32);
+      var x = (addr - 0x200) % 32;
+      ctx.fillRect(x * 6, y * 6, 6, 6);
     }
 
     return {
