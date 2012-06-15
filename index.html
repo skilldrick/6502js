@@ -1,49 +1,39 @@
+<!doctype html>
 <html>
   <head>
     <link href="style.css" rel="stylesheet" type="text/css" />
     <title>6502 assembler and emulator</title>
   </head>
   <body>
-    <font class="title">6502asm.com</font> <font class="version">v1.5</font><br/>
-    <font class="reloaded">RELOADED .::</font>
 
-    <div class='widget'>
-      <table>
-        <tr>
-          <td width="50px" valign="top">
-            <input type="button" value="Compile" class="compileButton" />
-            <input type="button" value="Run" class="runButton" />
-            <input type="button" value="Reset" class="resetButton" />
-            <input type="button" value="Hexdump" class="hexdumpButton" />
-          </td>
-          <td>
-            <table align="center">
-              <tr>
-                <td valign="top">
-                  <textarea class="code"></textarea>
-                </td>
-                <td valign="top">
-                  <canvas class="screen" width="192" height="192"></canvas>
-                  <div class="dbugWin">
-                    <input type="checkbox" class="debug" /><font class="version">Real-time debug</font><br />
-                    <div class="minidebugger">
-                      <br />
-                      A=$00 X=$00 Y=$00<br />
-                      P=$00 SP=$0000 PC=$0000<br />
-                    </div>
-                    <input type="button" value="Step" class="stepButton" />
-                    <input type="button" value="Jump to..." class="gotoButton" />
-                  </div>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
+    <div class="widget">
+      <div class="buttons">
+        <input type="button" value="Compile" class="compileButton" />
+        <input type="button" value="Run" class="runButton" />
+        <input type="button" value="Reset" class="resetButton" />
+        <input type="button" value="Hexdump" class="hexdumpButton" />
+      </div>
+
+      <textarea class="code"></textarea>
+
+      <canvas class="screen" width="192" height="192"></canvas>
+
+      <div class="debugger">
+        <input type="checkbox" class="debug" name="debug" />
+        <label for="debug">Debugger</label>
+        <div class="minidebugger">
+          A=$00 X=$00 Y=$00<br />
+          P=$00 SP=$0000 PC=$0000<br />
+        </div>
+        <div class="buttons">
+          <input type="button" value="Step" class="stepButton" />
+          <input type="button" value="Jump to..." class="gotoButton" />
+        </div>
+      </div>
       <div class="messages"></div>
     </div>
+
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
     <script src="assembler.js"></script>
-
   </body>
 </html>

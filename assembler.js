@@ -9,7 +9,6 @@
 */
 
 
-
 function EmulatorWidget(node) {
   var $node = $(node);
   var ui = UI();
@@ -95,7 +94,6 @@ function EmulatorWidget(node) {
     }
 
     function initialize() {
-      console.log(start);
       setState(start);
     }
 
@@ -1485,8 +1483,7 @@ function EmulatorWidget(node) {
     }
 
     function updateDebugInfo() {
-      var html = "<br />";
-      html += "A=$" + num2hex(regA) + " X=$" + num2hex(regX) + " Y=$" + num2hex(regY) + "<br />";
+      var html = "A=$" + num2hex(regA) + " X=$" + num2hex(regX) + " Y=$" + num2hex(regY) + "<br />";
       html += "P=$" + num2hex(regP) + " SP=$" + addr2hex(regSP) + " PC=$" + addr2hex(regPC);
       $node.find('.minidebugger').html(html);
     }
@@ -1537,6 +1534,7 @@ function EmulatorWidget(node) {
       regSP = 0x100;
       regP = 0x20;
       stopDebugger();
+      updateDebugInfo();
     }
 
     function stop() {
