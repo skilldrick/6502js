@@ -29,7 +29,6 @@ function EmulatorWidget(node) {
     $node.find('.runButton').click(emulator.runBinary);
     $node.find('.runButton').click(emulator.stopDebugger);
     $node.find('.resetButton').click(emulator.reset);
-    $node.find('.resetButton').click(ui.reset);
     $node.find('.hexdumpButton').click(compiler.hexdump);
     $node.find('.debug').change(function () {
       var debug = $(this).is(':checked');
@@ -63,27 +62,35 @@ function EmulatorWidget(node) {
       run: [true, 'Run'],
       reset: true,
       hexdump: true,
-      debug: [false, false],
-    }
+      debug: [true, false],
+    };
     var running = {
       compile: false,
       run: [true, 'Stop'],
       reset: true,
       hexdump: false,
       debug: [true, false],
-    }
+    };
     var debugging = {
       compile: false,
-      run: [true, 'Stop'],
       reset: true,
-      hexdump: false,
+      hexdump: true,
       debug: [true, true],
-    }
+    };
+    var postDebugging = {
+      compile: false,
+      reset: true,
+      hexdump: true,
+      debug: [true, false]
+    };
+
 
     function setState(state) {
       $node.find('.compileButton').attr('disabled', !state.compile);
-      $node.find('.runButton').attr('disabled', !state.run[0]);
-      $node.find('.runButton').val(state.run[1]);
+      if (state.run) {
+        $node.find('.runButton').attr('disabled', !state.run[0]);
+        $node.find('.runButton').val(state.run[1]);
+      }
       $node.find('.resetButton').attr('disabled', !state.reset);
       $node.find('.hexdumpButton').attr('disabled', !state.hexdump);
       $node.find('.debug').attr('disabled', !state.debug[0]);
@@ -110,22 +117,17 @@ function EmulatorWidget(node) {
     }
 
     function debugOff() {
-      setState(running);
+      setState(postDebugging);
     }
 
     function compileSuccess() {
       setState(compiled);
     }
 
-    function reset() {
-      setState(currentState == running ? running : compiled);
-    }
-
     return {
       initialize: initialize,
       play: play,
       stop: stop,
-      reset: reset,
       compileSuccess: compileSuccess,
       debugOn: debugOn,
       debugOff: debugOff
@@ -1456,13 +1458,13 @@ function EmulatorWidget(node) {
 
     // execute() - Executes one instruction.
     //             This is the main part of the CPU emulator.
-    function execute() {
-      if (!codeRunning) { return; }
+    function execute(debugging) {
+      if (!codeRunning && !debugging) { return; }
 
       setRandomByte();
       executeNextInstruction();
 
-      if ((regPC === 0) || (!codeRunning)) {
+      if ((regPC === 0) || (!codeRunning && !debugging)) {
         stop();
         message("Program end at PC=$" + addr2hex(regPC - 1));
         ui.stop();
@@ -1476,9 +1478,9 @@ function EmulatorWidget(node) {
 
     // debugExec() - Execute one instruction and print values
     function debugExec() {
-      if (codeRunning) {
-        execute();
-      }
+      //if (codeRunning) {
+        execute(true);
+      //}
       updateDebugInfo();
     }
 
@@ -1533,7 +1535,6 @@ function EmulatorWidget(node) {
       regPC = 0x600;
       regSP = 0x100;
       regP = 0x20;
-      stopDebugger();
       updateDebugInfo();
     }
 
