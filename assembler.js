@@ -224,7 +224,7 @@ function SimulatorWidget(node) {
     var regY = 0;
     var regP = 0;
     var regPC = 0x600;
-    var regSP = 0x100;
+    var regSP = 0xff;
     var codeRunning = false;
     var debug = false;
     var executeId;
@@ -1491,7 +1491,7 @@ function SimulatorWidget(node) {
 
     function updateDebugInfo() {
       var html = "A=$" + num2hex(regA) + " X=$" + num2hex(regX) + " Y=$" + num2hex(regY) + "<br />";
-      html += "SP=$" + addr2hex(regSP) + " PC=$" + addr2hex(regPC);
+      html += "SP=$" + num2hex(regSP) + " PC=$" + addr2hex(regPC);
       html += "<br />";
       html += "NV-BDIZC<br />";
       for (var i = 7; i >=0; i--) {
@@ -1543,7 +1543,7 @@ function SimulatorWidget(node) {
       }
       regA = regX = regY = 0;
       regPC = 0x600;
-      regSP = 0x100;
+      regSP = 0xff;
       regP = 0x20;
       updateDebugInfo();
     }
