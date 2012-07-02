@@ -27,8 +27,25 @@
           <input type="button" value="Jump to ..." class="gotoButton" />
         </div>
       </div>
+
+      <div class="monitorControls">
+        <label for="monitoring">Monitor</label>
+        <input type="checkbox" class="monitoring" name="monitoring" />
+
+        <label for="start">Start $</label>
+        <input type="text" value="0" class="start" name="start" />
+        <label for="length">Length $</label>
+        <input type="text" value="ff" class="length" name="length" />
+      </div>
+
+      <div class="monitor"><code></code></div>
       <div class="messages"></div>
     </div>
+
+
+    <!--
+    Should include the instructions somewhere.
+    -->
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
     <script src="assembler.js"></script>
