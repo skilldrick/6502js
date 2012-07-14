@@ -2084,9 +2084,9 @@ function SimulatorWidget(node) {
         return true;
       }
       if (param.match(/^[0-9]{1,3}$/i)) {
-        pushByte(opcode);
         value = parseInt(param, 10);
         if (value < 0 || value > 255) { return false; }
+        pushByte(opcode);
         pushByte(value);
         return true;
       }
