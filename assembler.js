@@ -995,7 +995,7 @@ function SimulatorWidget(node) {
         var value = memory.get(addr);
         setCarryFlagFromBit0(value);
         value = value >> 1;
-        if (value) { value |= 0x80; }
+        if (sf) { value |= 0x80; }
         memory.storeByte(addr, value);
         ROR(value);
       },
