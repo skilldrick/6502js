@@ -1045,7 +1045,7 @@ function SimulatorWidget(node) {
       },
 
       i94: function () {
-        memory.storeByte(popByte() + regX, regY);
+        memory.storeByte((popByte() + regX) & 0xff, regY);
         //STY
       },
 
