@@ -1426,7 +1426,6 @@ function SimulatorWidget(node) {
       if5: function () {
         var addr = (popByte() + regX) & 0xff;
         var value = memory.get(addr);
-        setCarryFlagFromBit0(value);
         testSBC(value);
         //SBC
       },
@@ -1443,7 +1442,7 @@ function SimulatorWidget(node) {
 
       if9: function () {
         var addr = popWord();
-        var value = memory(addr + regY);
+        var value = memory.get(addr + regY);
         testSBC(value);
         //SBC
       },
