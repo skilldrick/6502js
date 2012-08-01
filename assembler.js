@@ -363,14 +363,16 @@ function SimulatorWidget(node) {
     function DEC(addr) {
       var value = memory.get(addr);
       value--;
-      memory.storeByte(addr, value & 0xff);
+      value &= 0xff;
+      memory.storeByte(addr, value);
       setNVflags(value);
     }
 
     function INC(addr) {
       var value = memory.get(addr);
       value++;
-      memory.storeByte(addr, value & 0xff);
+      value &= 0xff;
+      memory.storeByte(addr, value);
       setNVflags(value);
     }
 
