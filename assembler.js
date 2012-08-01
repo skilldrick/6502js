@@ -498,7 +498,7 @@ function SimulatorWidget(node) {
       },
 
       i01: function () {
-        var addr = popByte() + regX;
+        var addr = (popByte() + regX) & 0xff;
         var value = memory.getWord(addr);
         regA |= value;
         ORA();
@@ -1233,8 +1233,7 @@ function SimulatorWidget(node) {
       },
 
       ic1: function () {
-        var zp = popByte();
-        var addr = memory.getWord(zp) + regY;
+        var addr = (popByte() + regX) & 0xff;
         var value = memory.get(addr);
         doCompare(regA, value);
         //CPA
