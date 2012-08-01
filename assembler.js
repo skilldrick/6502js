@@ -1166,7 +1166,7 @@ function SimulatorWidget(node) {
 
       ib5: function () {
         regA = memory.get((popByte() + regX) & 0xff);
-        LDY();
+        LDA();
       },
 
       ib6: function () {
