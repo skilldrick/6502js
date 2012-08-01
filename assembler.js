@@ -500,7 +500,7 @@ function SimulatorWidget(node) {
       },
 
       i08: function () {
-        stackPush(regP);
+        stackPush(regP | 0x30);
         //PHP
       },
 
@@ -622,7 +622,7 @@ function SimulatorWidget(node) {
       },
 
       i28: function () {
-        regP = stackPop() | 0x20;
+        regP = stackPop() | 0x30; // There is no B bit!
         //PLP
       },
 
