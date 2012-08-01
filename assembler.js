@@ -278,6 +278,7 @@ function SimulatorWidget(node) {
     var debug = false;
     var monitoring = false;
     var executeId;
+    var icount = 0;
 
     //set zero and negative processor flags based on result
     function setNVflags(value) {
@@ -1494,8 +1495,16 @@ function SimulatorWidget(node) {
 
     function multiExecute() {
       if (!debug) {
-        //prime number of iterations to avoid aliasing effects
-        for (var w = 0; w < 97; w++) {
+        // use a prime number of iterations to avoid aliasing effects
+
+        // some debug assistance for running fast up to some interesting point
+        // if (icount<90875) count=10097; else count=1097;
+        // if (icount==102258) count=97;
+        // if (icount>=102355) count=1;
+        count=10097
+
+        for (var w = 0; w < count; w++) {
+          icount++;
           execute();
         }
       }
