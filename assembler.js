@@ -1185,6 +1185,7 @@ function SimulatorWidget(node) {
 
       iba: function () {
         regX = regSP & 0xff;
+        LDX();
         //TSX
       },
 
