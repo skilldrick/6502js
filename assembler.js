@@ -722,7 +722,8 @@ function SimulatorWidget(node) {
       },
 
       i40: function () {
-        throw new Error("Not implemented");
+        regP = stackPop() | 0x30; // There is no B bit!
+        regPC = stackPop() | (stackPop() << 8);
         //RTI
       },
 
