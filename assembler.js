@@ -1159,7 +1159,7 @@ function SimulatorWidget(node) {
       },
 
       ib4: function () {
-        regY = memory.get(popByte() + regX);
+        regY = memory.get((popByte() + regX) & 0xff);
         LDY();
       },
 
