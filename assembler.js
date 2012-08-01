@@ -1445,26 +1445,23 @@ function SimulatorWidget(node) {
     };
 
     function stackPush(value) {
-      if (regSP >= 0) {
-        memory.set((regSP & 0xff) + 0x100, value & 0xff);
-        regSP--;
-      } else {
-        message("Stack full: " + regSP);
-        codeRunning = false;
+      memory.set((regSP & 0xff) + 0x100, value & 0xff);
+      regSP--;
+      if (regSP < 0) {
+        regSP &= 0xff;
+        alert("6502 Stack filled! Wrapping...");
       }
     }
 
     function stackPop() {
       var value;
-      if (regSP < 0x100) {
-        regSP++;
-        value = memory.get(regSP + 0x100);
-        return value;
-      } else {
-        message("Stack empty");
-        codeRunning = false;
-        return 0;
+      regSP++;
+      if (regSP >= 0x100) {
+        regSP &= 0xff;
+        alert("6502 Stack emptied! Wrapping...");
       }
+      value = memory.get(regSP + 0x100);
+      return value;
     }
 
     // popByte() - Pops a byte
