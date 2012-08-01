@@ -676,7 +676,7 @@ function SimulatorWidget(node) {
 
       i35: function () {
         var zp = popByte();
-        var value = memory.getWord(zp) + regX;
+        var value = (memory.getWord(zp) + regX) & 0xff;
         regA &= memory.get(value);
         AND();
       },
@@ -1050,12 +1050,12 @@ function SimulatorWidget(node) {
       },
 
       i95: function () {
-        memory.storeByte(popByte() + regX, regA);
+        memory.storeByte((popByte() + regX) & 0xff, regA);
         //STA
       },
 
       i96: function () {
-        memory.storeByte(popByte() + regY, regX);
+        memory.storeByte((popByte() + regY) & 0xff, regX);
         //STX
       },
 
@@ -1288,13 +1288,13 @@ function SimulatorWidget(node) {
       },
 
       id5: function () {
-        var value = memory.get(popByte() + regX);
+        var value = memory.get((popByte() + regX) & 0xff);
         doCompare(regA, value);
         //CMP
       },
 
       id6: function () {
-        var addr = popByte() + regX;
+        var addr = (popByte() + regX) & 0xff;
         DEC(addr);
       },
 
@@ -1411,7 +1411,7 @@ function SimulatorWidget(node) {
       },
 
       if6: function () {
-        var addr = popByte() + regX;
+        var addr = (popByte() + regX) & 0xff;
         INC(addr);
       },
 
