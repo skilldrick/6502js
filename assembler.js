@@ -816,7 +816,8 @@ function SimulatorWidget(node) {
       },
 
       i58: function () {
-        throw new Error("Not implemented");
+        regP &= ~0x04;
+        throw new Error("Interrupts not implemented");
         //CLI
       },
 
@@ -951,7 +952,8 @@ function SimulatorWidget(node) {
       },
 
       i78: function () {
-        throw new Error("Not implemented");
+        regP |= 0x04;
+        throw new Error("Interrupts not implemented"); 
         //SEI
       },
 
