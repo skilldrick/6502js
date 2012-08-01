@@ -1233,7 +1233,8 @@ function SimulatorWidget(node) {
       },
 
       ic1: function () {
-        var addr = (popByte() + regX) & 0xff;
+        var zp = (popByte() + regX) & 0xff;
+        var addr = memory.getWord(zp);
         var value = memory.get(addr);
         doCompare(regA, value);
         //CPA
