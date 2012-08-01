@@ -529,7 +529,7 @@ function SimulatorWidget(node) {
 
       i0a: function () {
         setCarryFlagFromBit7(regA);
-        regA = regA << 1;
+        regA = (regA << 1) & 0xff;
         ASL(regA);
       },
 
@@ -652,7 +652,7 @@ function SimulatorWidget(node) {
       i2a: function () {
         var sf = carrySet();
         setCarryFlagFromBit7(regA);
-        regA = regA << 1;
+        regA = (regA << 1) & 0xff;
         regA |= sf;
         ROL(regA);
       },
