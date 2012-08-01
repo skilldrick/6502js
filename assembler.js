@@ -319,12 +319,29 @@ function SimulatorWidget(node) {
     var EOR = setNVflagsForRegA;
     var ASL = setNVflags;
     var LSR = setNVflags;
-    var BIT = setNVflags;
     var ROL = setNVflags;
     var ROR = setNVflags;
     var LDA = setNVflagsForRegA;
     var LDX = setNVflagsForRegX;
     var LDY = setNVflagsForRegY;
+
+    function BIT(value){
+      if (value & 0x80) {
+        regP |= 0x80;    
+      } else {
+        regP &= 0x7f;
+      }
+      if (value & 0x40) {
+        regP |= 0x40;    
+      } else {
+        regP &= ~0x40;
+      }
+      if (regA & value) {
+        regP &= 0xfd;
+      } else {
+        regP |= 0x02;
+      }
+    }
 
     function CLC() {
       regP &= 0xfe;
