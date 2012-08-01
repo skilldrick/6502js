@@ -1443,8 +1443,8 @@ function SimulatorWidget(node) {
 
     function stackPush(value) {
       if (regSP >= 0) {
-        regSP--;
         memory.set((regSP & 0xff) + 0x100, value & 0xff);
+        regSP--;
       } else {
         message("Stack full: " + regSP);
         codeRunning = false;
@@ -1454,8 +1454,8 @@ function SimulatorWidget(node) {
     function stackPop() {
       var value;
       if (regSP < 0x100) {
-        value = memory.get(regSP + 0x100);
         regSP++;
+        value = memory.get(regSP + 0x100);
         return value;
       } else {
         message("Stack empty");
