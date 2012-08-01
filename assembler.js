@@ -498,8 +498,9 @@ function SimulatorWidget(node) {
       },
 
       i01: function () {
-        var addr = (popByte() + regX) & 0xff;
-        var value = memory.getWord(addr);
+        var zp = (popByte() + regX) & 0xff;
+        var addr = memory.getWord(zp);
+        var value = memory.get(addr);
         regA |= value;
         ORA();
       },
@@ -612,8 +613,9 @@ function SimulatorWidget(node) {
       },
 
       i21: function () {
-        var addr = (popByte() + regX) & 0xff;
-        var value = memory.getWord(addr);
+        var zp = (popByte() + regX) & 0xff;
+        var addr = memory.getWord(zp);
+        var value = memory.get(addr);
         regA &= value;
         AND();
       },
