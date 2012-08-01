@@ -695,9 +695,8 @@ function SimulatorWidget(node) {
       },
 
       i35: function () {
-        var zp = popByte();
-        var value = (memory.getWord(zp) + regX) & 0xff;
-        regA &= memory.get(value);
+        var addr = (popByte() + regX) & 0xff;
+        regA &= memory.get(addr);
         AND();
       },
 
