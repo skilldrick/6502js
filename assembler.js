@@ -1445,22 +1445,26 @@ function SimulatorWidget(node) {
     };
 
     function stackPush(value) {
+      // console.log("stackPush entry: SP is " + regSP + " and value is" + value);
       memory.set((regSP & 0xff) + 0x100, value & 0xff);
       regSP--;
       if (regSP < 0) {
         regSP &= 0xff;
         alert("6502 Stack filled! Wrapping...");
       }
+      // console.log("stackPush done: SP is now " + regSP);
     }
 
     function stackPop() {
       var value;
+      // console.log("stackPop entry: SP is " + regSP);
       regSP++;
       if (regSP >= 0x100) {
         regSP &= 0xff;
         alert("6502 Stack emptied! Wrapping...");
       }
       value = memory.get(regSP + 0x100);
+      // console.log("stackPop done: SP is now " + regSP + " and value is" + value)
       return value;
     }
 
