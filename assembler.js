@@ -956,7 +956,6 @@ function SimulatorWidget(node) {
       i75: function () {
         var addr = (popByte() + regX) & 0xff;
         var value = memory.get(addr);
-        setCarryFlagFromBit0(value);
         testADC(value);
         //ADC
       },
