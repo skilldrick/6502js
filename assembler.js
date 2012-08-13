@@ -278,7 +278,6 @@ function SimulatorWidget(node) {
     var debug = false;
     var monitoring = false;
     var executeId;
-    var icount = 0;
 
     //set zero and negative processor flags based on result
     function setNVflags(value) {
@@ -325,14 +324,14 @@ function SimulatorWidget(node) {
     var LDX = setNVflagsForRegX;
     var LDY = setNVflagsForRegY;
 
-    function BIT(value){
+    function BIT(value) {
       if (value & 0x80) {
-        regP |= 0x80;    
+        regP |= 0x80;
       } else {
         regP &= 0x7f;
       }
       if (value & 0x40) {
-        regP |= 0x40;    
+        regP |= 0x40;
       } else {
         regP &= ~0x40;
       }
@@ -973,7 +972,7 @@ function SimulatorWidget(node) {
 
       i78: function () {
         regP |= 0x04;
-        throw new Error("Interrupts not implemented"); 
+        throw new Error("Interrupts not implemented");
         //SEI
       },
 
@@ -1465,26 +1464,22 @@ function SimulatorWidget(node) {
     };
 
     function stackPush(value) {
-      // console.log("stackPush entry: SP is " + regSP + " and value is" + value);
       memory.set((regSP & 0xff) + 0x100, value & 0xff);
       regSP--;
       if (regSP < 0) {
         regSP &= 0xff;
-        alert("6502 Stack filled! Wrapping...");
+        message("6502 Stack filled! Wrapping...");
       }
-      // console.log("stackPush done: SP is now " + regSP);
     }
 
     function stackPop() {
       var value;
-      // console.log("stackPop entry: SP is " + regSP);
       regSP++;
       if (regSP >= 0x100) {
         regSP &= 0xff;
-        alert("6502 Stack emptied! Wrapping...");
+        message("6502 Stack emptied! Wrapping...");
       }
       value = memory.get(regSP + 0x100);
-      // console.log("stackPop done: SP is now " + regSP + " and value is" + value)
       return value;
     }
 
@@ -1515,14 +1510,7 @@ function SimulatorWidget(node) {
       if (!debug) {
         // use a prime number of iterations to avoid aliasing effects
 
-        // some debug assistance for running fast up to some interesting point
-        // if (icount<90875) count=10097; else count=1097;
-        // if (icount==102258) count=97;
-        // if (icount>=102355) count=1;
-        count=10097
-
-        for (var w = 0; w < count; w++) {
-          icount++;
+        for (var w = 0; w < 97; w++) {
           execute();
         }
       }
@@ -1609,7 +1597,7 @@ function SimulatorWidget(node) {
         }
       }
       if (addr === 0) {
-        alert("Unable to find/parse given address/label");
+        message("Unable to find/parse given address/label");
       } else {
         regPC = addr;
       }
