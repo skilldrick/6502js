@@ -1625,7 +1625,7 @@ function SimulatorWidget(node) {
       regA = regX = regY = 0;
       regPC = 0x600;
       regSP = 0xff;
-      regP = 0x20;
+      regP = 0x30;
       updateDebugInfo();
     }
 
