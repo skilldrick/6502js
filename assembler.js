@@ -2015,6 +2015,13 @@ function SimulatorWidget(node) {
         pushByte(value);
         return true;
       }
+      if (param.match(/^#\%[0-1]{1,8}$/i)) {
+        pushByte(opcode);
+        value = parseInt(param.replace(/^#\%/, ""), 2);
+        if (value < 0 || value > 255) { return false; }
+        pushByte(value);
+        return true;
+      }
       if (param.match(/^#[0-9]{1,3}$/i)) {
         pushByte(opcode);
         value = parseInt(param.replace(/^#/, ""), 10);
