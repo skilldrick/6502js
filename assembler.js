@@ -2149,7 +2149,7 @@ function SimulatorWidget(node) {
           return true;
         } else {
           pushWord(0x1234);
-          return true;
+          return false;
         }
       }
 
@@ -2181,7 +2181,7 @@ function SimulatorWidget(node) {
           return true;
         } else {
           pushWord(0x1234);
-          return true;
+          return false;
         }
       }
       return false;
@@ -2258,7 +2258,7 @@ function SimulatorWidget(node) {
           return true;
         } else {
           pushWord(0x1234);
-          return true;
+          return false;
         }
       }
       return false;
