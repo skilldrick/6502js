@@ -2474,14 +2474,13 @@ function SimulatorWidget(node) {
 
 
   function addr2hex(addr) {
-    return num2hex((addr >> 8) & 0xff) + num2hex(addr & 0xff);
+    var addrHex = (addr & 0xffff).toString(16);
+    return "0".repeat(4 - addrHex.length) + addrHex;
   }
 
   function num2hex(nr) {
-    var str = "0123456789abcdef";
-    var hi = ((nr & 0xf0) >> 4);
-    var lo = (nr & 15);
-    return str.substring(hi, hi + 1) + str.substring(lo, lo + 1);
+    var nrHex = (nr & 0xff).toString(16);
+    return ((nrHex.length == 2) ? "" : "0") + nrHex;
   }
 
   // message() - Prints text in the message window
