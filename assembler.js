@@ -2474,7 +2474,8 @@ function SimulatorWidget(node) {
 
 
   function addr2hex(addr) {
-    return num2hex((addr >> 8) & 0xff) + num2hex(addr & 0xff);
+    var addrHex = (addr & 0xffff).toString(16);
+    return "0".repeat(4 - addrHex.length) + addrHex;
   }
 
   function num2hex(nr) {
